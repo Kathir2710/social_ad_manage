@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Social Media Marketing Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://apis.google.com/js/api.js"></script>
+<style>
+body {font-family:'Roboto',sans-serif; margin:0; background:#f4f6f8; color:#333;}
+header {background:#4267B2; color:#fff; padding:25px 20px; text-align:center; font-size:1.8em; font-weight:700; box-shadow:0 4px 8px rgba(0,0,0,0.1);}
+.container {max-width:1200px; margin:30px auto; padding:0 20px;}
+.card {background:#fff; border-radius:12px; padding:20px 25px; margin-bottom:25px; box-shadow:0 6px 20px rgba(0,0,0,0.08); transition: transform 0.2s;}
+.card:hover {transform: translateY(-3px);}
+.card h3 {margin-top:0; color:#444; margin-bottom:15px; font-size:1.2em; cursor:pointer;}
+button {background:#4267B2; color:#fff; border:none; padding:10px 18px; margin:6px 0; border-radius:6px; cursor:pointer; font-weight:500; transition:0.3s;}
+button:hover {background:#365899;}
+textarea,input,select {width:100%; padding:10px; margin:6px 0; border-radius:6px; border:1px solid #ccc; font-family:inherit; font-size:0.95em;}
+pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-height:220px;}
+.status {font-weight:500; margin-bottom:10px;}
+.chart-container {position:relative; height:300px; margin-top:15px;}
+.section-color-1 {border-left:6px solid #4267B2;}
+.section-color-2 {border-left:6px solid #f57c00;}
+.section-color-3 {border-left:6px solid #6a1b9a;}
+.section-color-4 {border-left:6px solid #00796b;}
+.section-color-5 {border-left:6px solid #1DA1F2;}
+.section-color-6 {border-left:6px solid #E1306C;}
+.section-color-7 {border-left:6px solid #FF0000;}
+.collapsible {cursor:pointer;}
+@media(max-width:600px){header{font-size:1.5em;padding:20px 15px}.card{padding:15px 18px}}
+</style>
+</head>
+<body>
+<header>Social Media Marketing Dashboard</header>
+<div class="container">
+
+<!-- Facebook -->
+<div class="card section-color-1">
+  <h3 class="collapsible">📘 Facebook Login</h3>
+  <div id="loginContent">
+    <p class="status" id="status">Not logged in.</p>
+    <button id="btnLogin">Login with Facebook</button>
+    <button id="btnLogout" style="display:none;">Logout</button>
+  </div>
+</div>
+
+<!-- Facebook Ads -->
+<div class="card section-color-2">
+  <h3 class="collapsible">💼 Facebook Ad Accounts</h3>
+  <div id="adAccountsList">Loading...</div>
+</div>
+
+<!-- Facebook Pages -->
+<div class="card section-color-3">
+  <h3 class="collapsible">📃 Facebook Pages</h3>
+  <div id="pagesList">Loading...</div>
+</div>
+
+<!-- Facebook Page Actions -->
+<div class="card section-color-4">
+  <h3 class="collapsible">⚙️ Facebook Page Actions</h3>
+  <div>
+    <div><b>Selected Page:</b> <span id="selectedPageName"></span></div>
+    <textarea id="postMessage">Hello from dashboard!</textarea>
+    <button id="btnPost">Post</button>
+    <pre id="postResult"></pre>
+    <select id="insightsMetric">
+      <option value="page_fans">Fans</option>
+      <option value="page_impressions">Impressions</option>
+      <option value="page_engaged_users">Engaged Users</option>
+    </select>
+    <button id="btnGetPageInsights">Fetch Insights</button>
+    <div class="chart-container"><canvas id="pageChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Instagram -->
+<div class="card section-color-6">
+  <h3 class="collapsible">📸 Instagram</h3>
+  <div>
+    <button id="btnGetInstagramInfo">Fetch Instagram Info</button>
+    <pre id="instaInfo"></pre>
+    <input id="instaImageUrl" placeholder="Image URL">
+    <textarea id="instaCaption" placeholder="Caption">Hello from Instagram!</textarea>
+    <button id="btnInstaPost">Post</button>
+    <pre id="instaPostResult"></pre>
+    <button id="btnGetInstaInsights">Fetch Insights</button>
+    <div class="chart-container"><canvas id="instaChart"></canvas></div>
+  </div>
+</div>
+
+<!-- Twitter -->
+<div class="card section-color-5">
+  <h3 class="collapsible">🐦 Twitter</h3>
+  <div>
+    <input id="twitterBearer" placeholder="Bearer Token">
+    <input id="twitterUsername" placeholder="Username">
+    <button id="btnGetTwitterProfile">Get Profile Info</button>
+    <pre id="twitterProfile"></pre>
+    <textarea id="tweetContent">Hello Twitter!</textarea>
+    <button id="btnPostTweet">Post Tweet</button>
+    <pre id="tweetResult"></pre>
+    <input id="tweetIdInput" placeholder="Tweet ID">
+    <button id="btnGetTweetMetrics">Fetch Metrics</button>
+    <div class="chart-container"><canvas id="twitterChart"></canvas></div>
+  </div>
+</div>
+
+<!-- YouTube -->
+<div class="card section-color-7">
+  <h3 class="collapsible">▶️ YouTube Channel</h3>
+  <div>
+    <button id="btnGoogleLogin">Login with Google</button>
+    <button id="btnGoogleLogout" style="display:none;">Logout</button>
+    <p id="ytStatus">Not logged in.</p>
+    <button id="btnGetChannelInfo">Get Channel Info</button>
+    <pre id="ytInfo"></pre>
+    <button id="btnGetYTAnalytics">Fetch Channel Analytics</button>
+    <div class="chart-container"><canvas id="ytChart"></canvas></div>
+    <label>Upload Video (Stub):</label>
+    <input id="ytVideoTitle" placeholder="Video Title">
+    <textarea id="ytVideoDesc" placeholder="Video Description"></textarea>
+    <input id="ytVideoFile" type="file" accept="video/*">
+    <button id="btnUploadVideo">Upload Video</button>
+    <pre id="ytUploadResult"></pre>
+  </div>
+</div>
+
+</div>
+
+<script src="https://connect.facebook.net/en_US/sdk.js"></script>
+<script>
+// ======== FACEBOOK + INSTAGRAM ========
+const FB_APP_ID='2766175383577129';
+const FB_SCOPES='public_profile,pages_show_list,pages_manage_posts,pages_read_engagement,ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights,instagram_content_publish';
+let userAccessToken=null,pages=[],selectedPage=null;
+let pageChart=null,instaChart=null,twitterChart=null,ytChart=null;
+
+window.fbAsyncInit=function(){
+  FB.init({appId:FB_APP_ID,cookie:true,xfbml:false,version:'v19.0'});
+  FB.getLoginStatus(checkLoginState);
+};
+
+function checkLoginState(response){
+  if(response.status==='connected'){
+    userAccessToken=response.authResponse.accessToken;
+    document.getElementById('btnLogin').style.display='none';
+    document.getElementById('btnLogout').style.display='inline-block';
+    document.getElementById('status').textContent='✅ Logged in';
+    fetchAdAccounts(); fetchPages();
+  }
+}
+document.getElementById('btnLogin').onclick=()=>FB.login(checkLoginState,{scope:FB_SCOPES});
+document.getElementById('btnLogout').onclick=()=>FB.logout(()=>location.reload());
+
+// Ad Accounts
+function fetchAdAccounts(){
+  FB.api('/me/adaccounts','GET',{access_token:userAccessToken},r=>{
+    document.getElementById('adAccountsList').textContent=JSON.stringify(r,null,2);
+  });
+}
+// Pages
+function fetchPages(){
+  FB.api('/me/accounts','GET',{access_token:userAccessToken},r=>{
+    pages=r.data||[];
+    document.getElementById('pagesList').innerHTML=pages.map((p,i)=>`<strong>${p.name}</strong> <button onclick="selectPage(${i})">Select</button><br>`).join('');
+  });
+}
+window.selectPage=i=>{selectedPage=pages[i];document.getElementById('selectedPageName').textContent=selectedPage.name;};
+// Post to Page
+document.getElementById('btnPost').onclick=()=>{
+  if(!selectedPage)return alert('Select page');
+  const msg=document.getElementById('postMessage').value;
+  fetch(`https://graph.facebook.com/v19.0/${selectedPage.id}/feed`,{method:'POST',body:new URLSearchParams({message:msg,access_token:selectedPage.access_token})})
+  .then(r=>r.json()).then(d=>document.getElementById('postResult').textContent=JSON.stringify(d,null,2));
+};
+// Page Insights
+document.getElementById('btnGetPageInsights').onclick=()=>{
+  if(!selectedPage)return alert('Select page');
+  const metric=document.getElementById('insightsMetric').value;
+  FB.api(`/${selectedPage.id}/insights`,{metric,period:'days_7',access_token:selectedPage.access_token},r=>{
+    if(r.data){const labels=r.data[0].values.map(v=>v.end_time.split('T')[0]);const values=r.data[0].values.map(v=>v.value);
+      if(pageChart)pageChart.destroy();
+      pageChart=new Chart(document.getElementById('pageChart'),{type:'line',data:{labels,datasets:[{label:metric,data:values,borderColor:'#4267B2',fill:true,backgroundColor:'rgba(66,103,178,0.2)'}]}});
+    }
+  });
+};
+
+// Instagram Info
+document.getElementById('btnGetInstagramInfo').onclick=()=>{
+  if(!selectedPage)return alert('Select page');
+  FB.api(`/${selectedPage.id}?fields=instagram_business_account`,{access_token:selectedPage.access_token},r=>{
+    if(r.instagram_business_account){
+      const igId=r.instagram_business_account.id;
+      FB.api(`/${igId}?fields=username,followers_count,media_count`,{access_token:selectedPage.access_token},res=>{
+        document.getElementById('instaInfo').textContent=JSON.stringify(res,null,2);
+      });
+    }else document.getElementById('instaInfo').textContent='No IG linked.';
+  });
+};
+// Instagram Post
+document.getElementById('btnInstaPost').onclick=()=>{
+  if(!selectedPage)return alert('Select page');
+  const img=document.getElementById('instaImageUrl').value;
+  const caption=document.getElementById('instaCaption').value;
+  FB.api(`/${selectedPage.id}?fields=instagram_business_account`,{access_token:selectedPage.access_token},r=>{
+    if(!r.instagram_business_account)return alert('No IG linked');
+    const igId=r.instagram_business_account.id;
+    fetch(`https://graph.facebook.com/v19.0/${igId}/media`,{method:'POST',body:new URLSearchParams({image_url:img,caption,access_token:selectedPage.access_token})})
+    .then(r=>r.json()).then(data=>{
+      fetch(`https://graph.facebook.com/v19.0/${igId}/media_publish`,{method:'POST',body:new URLSearchParams({creation_id:data.id,access_token:selectedPage.access_token})})
+      .then(r=>r.json()).then(d=>document.getElementById('instaPostResult').textContent=JSON.stringify(d,null,2));
+    });
+  });
+};
+// Instagram Insights
+document.getElementById('btnGetInstaInsights').onclick=()=>{
+  if(!selectedPage)return alert('Select page');
+  FB.api(`/${selectedPage.id}?fields=instagram_business_account`,{access_token:selectedPage.access_token},r=>{
+    if(!r.instagram_business_account)return alert('No IG linked');
+    const igId=r.instagram_business_account.id;
+    FB.api(`/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`,{access_token:selectedPage.access_token},res=>{
+      if(res.data){const labels=res.data.map(i=>i.name),values=res.data.map(i=>i.values[0].value);
+        if(instaChart)instaChart.destroy();
+        instaChart=new Chart(document.getElementById('instaChart'),{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:'#E1306C'}]}});
+      }
+    });
+  });
+};
+
+// ======== TWITTER ========
+async function twitterAPI(endpoint,method='GET',body=null){
+  const bearer=document.getElementById('twitterBearer').value.trim();
+  if(!bearer)return alert('Enter Bearer Token');
+  const res=await fetch(`https://api.twitter.com/2/${endpoint}`,{
+    method,headers:{'Authorization':`Bearer ${bearer}`,'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});
+  return await res.json();
+}
+document.getElementById('btnGetTwitterProfile').onclick=async()=>{
+  const u=document.getElementById('twitterUsername').value.trim();
+  if(!u)return alert('Enter username');
+  const d=await twitterAPI(`users/by/username/${u}?user.fields=public_metrics`);
+  document.getElementById('twitterProfile').textContent=JSON.stringify(d,null,2);
+};
+document.getElementById('btnPostTweet').onclick=async()=>{
+  const t=document.getElementById('tweetContent').value;
+  const d=await twitterAPI('tweets','POST',{text:t});
+  document.getElementById('tweetResult').textContent=JSON.stringify(d,null,2);
+};
+document.getElementById('btnGetTweetMetrics').onclick=async()=>{
+  const id=document.getElementById('tweetIdInput').value.trim();
+  if(!id)return alert('Enter Tweet ID');
+  const d=await twitterAPI(`tweets/${id}?tweet.fields=public_metrics`);
+  if(d.data){const m=d.data.public_metrics;
+    if(twitterChart)twitterChart.destroy();
+    twitterChart=new Chart(document.getElementById('twitterChart'),{type:'bar',data:{labels:Object.keys(m),datasets:[{data:Object.values(m),backgroundColor:'#1DA1F2'}]}});
+  }
+};
+
+// ======== YOUTUBE ========
+const GOOGLE_CLIENT_ID='YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+let googleAuth,userProfile;
+function initGoogleAPI(){
+  gapi.load('client:auth2',()=>{
+    gapi.client.init({clientId:GOOGLE_CLIENT_ID,scope:'https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/youtube.upload'});
+  });
+}
+initGoogleAPI();
+
+document.getElementById('btnGoogleLogin').onclick=async()=>{
+  const auth=gapi.auth2.getAuthInstance();
+  await auth.signIn();
+  userProfile=auth.currentUser.get().getBasicProfile();
+  document.getElementById('ytStatus').textContent='✅ Logged in as '+userProfile.getName();
+  document.getElementById('btnGoogleLogin').style.display='none';
+  document.getElementById('btnGoogleLogout').style.display='inline-block';
+};
+document.getElementById('btnGoogleLogout').onclick=()=>{
+  gapi.auth2.getAuthInstance().signOut();
+  document.getElementById('ytStatus').textContent='Logged out';
+  document.getElementById('btnGoogleLogin').style.display='inline-block';
+  document.getElementById('btnGoogleLogout').style.display='none';
+};
+
+// Channel Info
+document.getElementById('btnGetChannelInfo').onclick=async()=>{
+  await gapi.client.load('youtube','v3');
+  const res=await gapi.client.youtube.channels.list({mine:true,part:'snippet,statistics'});
+  document.getElementById('ytInfo').textContent=JSON.stringify(res.result,null,2);
+};
+// Channel Analytics (Subscribers, Views, Videos)
+document.getElementById('btnGetYTAnalytics').onclick=async()=>{
+  await gapi.client.load('youtube','v3');
+  const res=await gapi.client.youtube.channels.list({mine:true,part:'statistics'});
+  const stats=res.result.items[0].statistics;
+  if(ytChart)ytChart.destroy();
+  ytChart=new Chart(document.getElementById('ytChart'),{
+    type:'bar',data:{labels:Object.keys(stats),datasets:[{data:Object.values(stats),backgroundColor:'#FF0000'}]},
+    options:{plugins:{legend:{display:false}}}
+  });
+};
+// Upload Video (Stub)
+document.getElementById('btnUploadVideo').onclick=()=>{
+  document.getElementById('ytUploadResult').textContent='⚙️ Video upload requires YouTube Data API v3 resumable upload via backend.';
+};
+</script>
+</body>
+</html>
