@@ -35,31 +35,33 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 <header>Social Media Marketing Dashboard</header>
 <div class="container">
 
-<!-- Facebook -->
+<!-- Facebook Login -->
 <div class="card section-color-1">
-  <h3 class="collapsible">📘 Facebook Login</h3>
-  <div id="loginContent">
-    <p class="status" id="status">Not logged in.</p>
-    <button id="btnLogin">Login with Facebook</button>
-    <button id="btnLogout" style="display:none;">Logout</button>
-  </div>
+  <h3>📘 Facebook Login</h3>
+  <p class="status" id="status">Not logged in.</p>
+  <button id="btnLogin">Login with Facebook</button>
+  <button id="btnLogout" style="display:none;">Logout</button>
 </div>
 
 <!-- Facebook Ads -->
 <div class="card section-color-2">
-  <h3 class="collapsible">💼 Facebook Ad Accounts</h3>
+  <h3>💼 Facebook Ad Accounts & Insights</h3>
   <div id="adAccountsList">Loading...</div>
+  <div id="selectedAdAccount"></div>
+  <button id="btnGetAdInsights">Fetch Ad Insights</button>
+  <pre id="adInsightsResult"></pre>
+  <div class="chart-container"><canvas id="adChart"></canvas></div>
 </div>
 
 <!-- Facebook Pages -->
 <div class="card section-color-3">
-  <h3 class="collapsible">📃 Facebook Pages</h3>
+  <h3>📃 Facebook Pages</h3>
   <div id="pagesList">Loading...</div>
 </div>
 
 <!-- Facebook Page Actions -->
 <div class="card section-color-4">
-  <h3 class="collapsible">⚙️ Facebook Page Actions</h3>
+  <h3>⚙️ Facebook Page Actions</h3>
   <div>
     <div><b>Selected Page:</b> <span id="selectedPageName"></span></div>
     <textarea id="postMessage">Hello from dashboard!</textarea>
@@ -77,7 +79,7 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
 <!-- Instagram -->
 <div class="card section-color-6">
-  <h3 class="collapsible">📸 Instagram</h3>
+  <h3>📸 Instagram</h3>
   <div>
     <button id="btnGetInstagramInfo">Fetch Instagram Info</button>
     <pre id="instaInfo"></pre>
@@ -92,7 +94,7 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
 <!-- Twitter -->
 <div class="card section-color-5">
-  <h3 class="collapsible">🐦 Twitter</h3>
+  <h3>🐦 Twitter</h3>
   <div>
     <input id="twitterBearer" placeholder="Bearer Token">
     <input id="twitterUsername" placeholder="Username">
@@ -109,7 +111,7 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
 <!-- YouTube -->
 <div class="card section-color-7">
-  <h3 class="collapsible">▶️ YouTube Channel</h3>
+  <h3>▶️ YouTube Channel</h3>
   <div>
     <button id="btnGoogleLogin">Login with Google</button>
     <button id="btnGoogleLogout" style="display:none;">Logout</button>
@@ -131,11 +133,10 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
 <script src="https://connect.facebook.net/en_US/sdk.js"></script>
 <script>
-// ======== FACEBOOK + INSTAGRAM ========
-const FB_APP_ID='2766175383577129';
+const FB_APP_ID='YOUR_FACEBOOK_APP_ID'; // ← Replace this
 const FB_SCOPES='public_profile,pages_show_list,pages_manage_posts,pages_read_engagement,ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights,instagram_content_publish';
-let userAccessToken=null,pages=[],selectedPage=null;
-let pageChart=null,instaChart=null,twitterChart=null,ytChart=null;
+let userAccessToken=null,pages=[],selectedPage=null,adAccounts=[],selectedAdAccount=null;
+let pageChart=null,instaChart=null,twitterChart=null,ytChart=null,adChart=null;
 
 window.fbAsyncInit=function(){
   FB.init({appId:FB_APP_ID,cookie:true,xfbml:false,version:'v19.0'});
@@ -154,13 +155,43 @@ function checkLoginState(response){
 document.getElementById('btnLogin').onclick=()=>FB.login(checkLoginState,{scope:FB_SCOPES});
 document.getElementById('btnLogout').onclick=()=>FB.logout(()=>location.reload());
 
-// Ad Accounts
+// ===== FACEBOOK AD ACCOUNTS + INSIGHTS =====
 function fetchAdAccounts(){
   FB.api('/me/adaccounts','GET',{access_token:userAccessToken},r=>{
-    document.getElementById('adAccountsList').textContent=JSON.stringify(r,null,2);
+    if(r && r.data && r.data.length){
+      adAccounts = r.data;
+      document.getElementById('adAccountsList').innerHTML =
+        adAccounts.map((a,i)=>`<strong>${a.name}</strong> (ID: ${a.account_id}) 
+        <button onclick="selectAdAccount(${i})">Select</button><br>`).join('');
+    } else document.getElementById('adAccountsList').textContent='No Ad Accounts found.';
   });
 }
-// Pages
+window.selectAdAccount=i=>{
+  selectedAdAccount=adAccounts[i];
+  document.getElementById('selectedAdAccount').innerHTML=
+    `<b>Selected Ad Account:</b> ${selectedAdAccount.name} (${selectedAdAccount.id})`;
+};
+
+document.getElementById('btnGetAdInsights').onclick=()=>{
+  if(!selectedAdAccount)return alert('Select an ad account first');
+  const fields='spend,impressions,clicks';
+  const datePreset='last_7d';
+  FB.api(`/${selectedAdAccount.id}/insights`,'GET',{fields,date_preset:datePreset,access_token:userAccessToken},res=>{
+    if(res && res.data && res.data.length){
+      const d=res.data[0];
+      document.getElementById('adInsightsResult').textContent=JSON.stringify(d,null,2);
+      const metrics={Spend:d.spend,Impressions:d.impressions,Clicks:d.clicks};
+      if(adChart)adChart.destroy();
+      adChart=new Chart(document.getElementById('adChart'),{
+        type:'bar',
+        data:{labels:Object.keys(metrics),datasets:[{data:Object.values(metrics),backgroundColor:'#f57c00'}]},
+        options:{plugins:{legend:{display:false}}}
+      });
+    }else document.getElementById('adInsightsResult').textContent='No insights found.';
+  });
+};
+
+// ===== FACEBOOK PAGES =====
 function fetchPages(){
   FB.api('/me/accounts','GET',{access_token:userAccessToken},r=>{
     pages=r.data||[];
@@ -168,6 +199,7 @@ function fetchPages(){
   });
 }
 window.selectPage=i=>{selectedPage=pages[i];document.getElementById('selectedPageName').textContent=selectedPage.name;};
+
 // Post to Page
 document.getElementById('btnPost').onclick=()=>{
   if(!selectedPage)return alert('Select page');
@@ -175,19 +207,22 @@ document.getElementById('btnPost').onclick=()=>{
   fetch(`https://graph.facebook.com/v19.0/${selectedPage.id}/feed`,{method:'POST',body:new URLSearchParams({message:msg,access_token:selectedPage.access_token})})
   .then(r=>r.json()).then(d=>document.getElementById('postResult').textContent=JSON.stringify(d,null,2));
 };
+
 // Page Insights
 document.getElementById('btnGetPageInsights').onclick=()=>{
   if(!selectedPage)return alert('Select page');
   const metric=document.getElementById('insightsMetric').value;
   FB.api(`/${selectedPage.id}/insights`,{metric,period:'days_7',access_token:selectedPage.access_token},r=>{
-    if(r.data){const labels=r.data[0].values.map(v=>v.end_time.split('T')[0]);const values=r.data[0].values.map(v=>v.value);
+    if(r.data){
+      const labels=r.data[0].values.map(v=>v.end_time.split('T')[0]);
+      const values=r.data[0].values.map(v=>v.value);
       if(pageChart)pageChart.destroy();
       pageChart=new Chart(document.getElementById('pageChart'),{type:'line',data:{labels,datasets:[{label:metric,data:values,borderColor:'#4267B2',fill:true,backgroundColor:'rgba(66,103,178,0.2)'}]}});
     }
   });
 };
 
-// Instagram Info
+// ===== INSTAGRAM =====
 document.getElementById('btnGetInstagramInfo').onclick=()=>{
   if(!selectedPage)return alert('Select page');
   FB.api(`/${selectedPage.id}?fields=instagram_business_account`,{access_token:selectedPage.access_token},r=>{
@@ -199,7 +234,6 @@ document.getElementById('btnGetInstagramInfo').onclick=()=>{
     }else document.getElementById('instaInfo').textContent='No IG linked.';
   });
 };
-// Instagram Post
 document.getElementById('btnInstaPost').onclick=()=>{
   if(!selectedPage)return alert('Select page');
   const img=document.getElementById('instaImageUrl').value;
@@ -214,14 +248,14 @@ document.getElementById('btnInstaPost').onclick=()=>{
     });
   });
 };
-// Instagram Insights
 document.getElementById('btnGetInstaInsights').onclick=()=>{
   if(!selectedPage)return alert('Select page');
   FB.api(`/${selectedPage.id}?fields=instagram_business_account`,{access_token:selectedPage.access_token},r=>{
     if(!r.instagram_business_account)return alert('No IG linked');
     const igId=r.instagram_business_account.id;
     FB.api(`/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`,{access_token:selectedPage.access_token},res=>{
-      if(res.data){const labels=res.data.map(i=>i.name),values=res.data.map(i=>i.values[0].value);
+      if(res.data){
+        const labels=res.data.map(i=>i.name),values=res.data.map(i=>i.values[0].value);
         if(instaChart)instaChart.destroy();
         instaChart=new Chart(document.getElementById('instaChart'),{type:'bar',data:{labels,datasets:[{data:values,backgroundColor:'#E1306C'}]}});
       }
@@ -229,7 +263,7 @@ document.getElementById('btnGetInstaInsights').onclick=()=>{
   });
 };
 
-// ======== TWITTER ========
+// ===== TWITTER =====
 async function twitterAPI(endpoint,method='GET',body=null){
   const bearer=document.getElementById('twitterBearer').value.trim();
   if(!bearer)return alert('Enter Bearer Token');
@@ -252,14 +286,15 @@ document.getElementById('btnGetTweetMetrics').onclick=async()=>{
   const id=document.getElementById('tweetIdInput').value.trim();
   if(!id)return alert('Enter Tweet ID');
   const d=await twitterAPI(`tweets/${id}?tweet.fields=public_metrics`);
-  if(d.data){const m=d.data.public_metrics;
+  if(d.data){
+    const m=d.data.public_metrics;
     if(twitterChart)twitterChart.destroy();
     twitterChart=new Chart(document.getElementById('twitterChart'),{type:'bar',data:{labels:Object.keys(m),datasets:[{data:Object.values(m),backgroundColor:'#1DA1F2'}]}});
   }
 };
 
-// ======== YOUTUBE ========
-const GOOGLE_CLIENT_ID='YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+// ===== YOUTUBE =====
+const GOOGLE_CLIENT_ID='YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com'; // ← Replace
 let googleAuth,userProfile;
 function initGoogleAPI(){
   gapi.load('client:auth2',()=>{
@@ -282,27 +317,20 @@ document.getElementById('btnGoogleLogout').onclick=()=>{
   document.getElementById('btnGoogleLogin').style.display='inline-block';
   document.getElementById('btnGoogleLogout').style.display='none';
 };
-
-// Channel Info
 document.getElementById('btnGetChannelInfo').onclick=async()=>{
   await gapi.client.load('youtube','v3');
   const res=await gapi.client.youtube.channels.list({mine:true,part:'snippet,statistics'});
   document.getElementById('ytInfo').textContent=JSON.stringify(res.result,null,2);
 };
-// Channel Analytics (Subscribers, Views, Videos)
 document.getElementById('btnGetYTAnalytics').onclick=async()=>{
   await gapi.client.load('youtube','v3');
   const res=await gapi.client.youtube.channels.list({mine:true,part:'statistics'});
-  const stats=res.result.items[0].statistics;
+  const s=res.result.items[0].statistics;
   if(ytChart)ytChart.destroy();
-  ytChart=new Chart(document.getElementById('ytChart'),{
-    type:'bar',data:{labels:Object.keys(stats),datasets:[{data:Object.values(stats),backgroundColor:'#FF0000'}]},
-    options:{plugins:{legend:{display:false}}}
-  });
+  ytChart=new Chart(document.getElementById('ytChart'),{type:'bar',data:{labels:Object.keys(s),datasets:[{data:Object.values(s),backgroundColor:'#FF0000'}]}});
 };
-// Upload Video (Stub)
 document.getElementById('btnUploadVideo').onclick=()=>{
-  document.getElementById('ytUploadResult').textContent='⚙️ Video upload requires YouTube Data API v3 resumable upload via backend.';
+  document.getElementById('ytUploadResult').textContent='🔧 Uploading videos requires YouTube Data API upload endpoint and OAuth token handling.';
 };
 </script>
 </body>
