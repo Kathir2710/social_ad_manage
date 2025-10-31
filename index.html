@@ -97,21 +97,27 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
 <!-- TWITTER -->
 <div class="card section-color-5">
-  <h3>🐦 Twitter (requires backend proxy for production)</h3>
-  <div class="note">Direct browser calls to Twitter API are blocked by CORS. For testing you may use a temporary CORS proxy (not recommended for production). Recommended: deploy a small backend proxy and put its URL here.</div>
-  <input id="twitterProxyUrl" placeholder="Optional backend proxy URL (e.g. https://your-proxy.onrender.com)" />
-  <input id="twitterBearer" placeholder="(If using direct call) Bearer Token (not recommended in browser)" />
-  <input id="twitterUsername" placeholder="Username (e.g. Kathirludus2710)" />
+  <h3>🐦 Twitter (via backend proxy)</h3>
+  <div class="note">
+    Backend proxy: <b>https://social-ads-backend.onrender.com</b><br>
+    Use this to safely post tweets and fetch analytics.
+  </div>
+
+  <input id="twitterUsername" placeholder="Enter username (e.g. Kathirludus2710)" />
   <button id="btnGetTwitterProfile">Get Profile Info</button>
   <pre id="twitterProfile"></pre>
-  <textarea id="tweetContent" placeholder="Tweet content">Hello Twitter!</textarea>
-  <button id="btnPostTweet">Post Tweet</button>
-  <pre id="tweetResult"></pre>
-  <input id="tweetIdInput" placeholder="Tweet ID for metrics" />
-  <button id="btnGetTweetMetrics">Fetch Metrics</button>
-  <div class="chart-container"><canvas id="twitterChart"></canvas></div>
-</div>
 
+  <textarea id="tweetContent" placeholder="Write your tweet...">🚀 Hello world from my Social Ads Dashboard!</textarea>
+  <button id="btnPostTweet">Post Tweet / Ad</button>
+  <pre id="tweetResult"></pre>
+
+  <input id="tweetIdInput" placeholder="Enter Tweet ID for metrics" />
+  <button id="btnGetTweetMetrics">Get Tweet Metrics</button>
+  <div class="chart-container"><canvas id="twitterChart"></canvas></div>
+
+  <button id="btnGetAccountMetrics">Get Account Metrics</button>
+  <pre id="twitterAccountMetrics"></pre>
+</div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
   <h3>▶️ YouTube (Google OAuth - modern flow)</h3>
