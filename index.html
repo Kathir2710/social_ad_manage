@@ -97,27 +97,21 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
 <!-- TWITTER -->
 <div class="card section-color-5">
-  <h3>🐦 Twitter (via backend proxy)</h3>
-  <div class="note">
-    Backend proxy: <b>https://social-ads-backend.onrender.com</b><br>
-    Use this to safely post tweets and fetch analytics.
-  </div>
-
-  <input id="twitterUsername" placeholder="Enter username (e.g. Kathirludus2710)" />
+  <h3>🐦 Twitter (requires backend proxy for production)</h3>
+  <div class="note">Direct browser calls to Twitter API are blocked by CORS. For testing you may use a temporary CORS proxy (not recommended for production). Recommended: deploy a small backend proxy and put its URL here.</div>
+  <input id="twitterProxyUrl" placeholder="Optional backend proxy URL (e.g. https://your-proxy.onrender.com)" />
+  <input id="twitterBearer" placeholder="(If using direct call) Bearer Token (not recommended in browser)" />
+  <input id="twitterUsername" placeholder="Username (e.g. Kathirludus2710)" />
   <button id="btnGetTwitterProfile">Get Profile Info</button>
   <pre id="twitterProfile"></pre>
-
-  <textarea id="tweetContent" placeholder="Write your tweet...">🚀 Hello world from my Social Ads Dashboard!</textarea>
-  <button id="btnPostTweet">Post Tweet / Ad</button>
+  <textarea id="tweetContent" placeholder="Tweet content">Hello Twitter!</textarea>
+  <button id="btnPostTweet">Post Tweet</button>
   <pre id="tweetResult"></pre>
-
-  <input id="tweetIdInput" placeholder="Enter Tweet ID for metrics" />
-  <button id="btnGetTweetMetrics">Get Tweet Metrics</button>
+  <input id="tweetIdInput" placeholder="Tweet ID for metrics" />
+  <button id="btnGetTweetMetrics">Fetch Metrics</button>
   <div class="chart-container"><canvas id="twitterChart"></canvas></div>
-
-  <button id="btnGetAccountMetrics">Get Account Metrics</button>
-  <pre id="twitterAccountMetrics"></pre>
 </div>
+
 <!-- YOUTUBE -->
 <div class="card section-color-7">
   <h3>▶️ YouTube (Google OAuth - modern flow)</h3>
@@ -358,15 +352,11 @@ const BACKEND_URL = "https://social-ads-backend.onrender.com";
 /* ===========================================================
    🐦 TWITTER SECTION
 =========================================================== */
-
-
-// Reusable proxy call
 async function callTwitterViaProxy(endpoint, method = 'GET', body = null) {
   const url = `${BACKEND_URL}/twitter/${endpoint}`;
   const options = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) options.body = JSON.stringify(body);
   const res = await fetch(url, options);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
 
@@ -374,12 +364,15 @@ async function callTwitterViaProxy(endpoint, method = 'GET', body = null) {
 document.getElementById('btnGetTwitterProfile').onclick = async () => {
   const username = document.getElementById('twitterUsername').value.trim();
   if (!username) return alert('Enter username');
+
   try {
-    const data = await callTwitterViaProxy(`users/by/username/${username}?user.fields=public_metrics,profile_image_url,description`);
+    const data = await callTwitterViaProxy(
+      `users/by/username/${username}?user.fields=public_metrics,profile_image_url`
+    );
     document.getElementById('twitterProfile').textContent = JSON.stringify(data, null, 2);
   } catch (err) {
     console.error(err);
-    document.getElementById('twitterProfile').textContent = '❌ Error fetching Twitter profile.';
+    document.getElementById('twitterProfile').textContent = 'Error fetching Twitter profile.';
   }
 };
 
@@ -392,7 +385,7 @@ document.getElementById('btnPostTweet').onclick = async () => {
     document.getElementById('tweetResult').textContent = JSON.stringify(result, null, 2);
   } catch (err) {
     console.error(err);
-    document.getElementById('tweetResult').textContent = '❌ Error posting tweet/ad.';
+    document.getElementById('tweetResult').textContent = 'Error posting tweet.';
   }
 };
 
@@ -401,44 +394,27 @@ document.getElementById('btnGetTweetMetrics').onclick = async () => {
   const id = document.getElementById('tweetIdInput').value.trim();
   if (!id) return alert('Enter Tweet ID');
   try {
-    const data = await callTwitterViaProxy(`tweets/${id}?tweet.fields=public_metrics,organic_metrics,promoted_metrics`);
+    const data = await callTwitterViaProxy(`tweets/${id}?tweet.fields=public_metrics`);
     document.getElementById('tweetResult').textContent = JSON.stringify(data, null, 2);
-
     if (data?.data?.public_metrics) {
-      const metrics = data.data.public_metrics;
+      const m = data.data.public_metrics;
       if (twitterChart) twitterChart.destroy();
       twitterChart = new Chart(document.getElementById('twitterChart'), {
         type: 'bar',
         data: {
-          labels: Object.keys(metrics),
-          datasets: [{
-            data: Object.values(metrics),
-            backgroundColor: '#1DA1F2',
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true } }
+          labels: Object.keys(m),
+          datasets: [
+            { data: Object.values(m), backgroundColor: '#1DA1F2' }
+          ]
         }
       });
     }
   } catch (err) {
     console.error(err);
-    document.getElementById('tweetResult').textContent = '❌ Error fetching tweet metrics.';
+    document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
   }
 };
 
-// Get Account (Overall) Metrics
-document.getElementById('btnGetAccountMetrics').onclick = async () => {
-  try {
-    const me = await callTwitterViaProxy(`users/me?user.fields=public_metrics,verified,created_at`);
-    const metrics = me.data.public_metrics;
-    document.getElementById('twitterAccountMetrics').textContent = JSON.stringify(me, null, 2);
-  } catch (err) {
-    console.error(err);
-    document.getElementById('twitterAccountMetrics').textContent = '❌ Error fetching account metrics.';
-  }
-};
 /* ---------------------------
    YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client
    --------------------------- */
