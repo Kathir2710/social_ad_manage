@@ -346,91 +346,74 @@ document.getElementById('btnGetInstaInsights').onclick = () => {
 };
 
 
-/* ---------------------------
-   TWITTER: frontend approach (browser CANNOT call Twitter API in production because of CORS)
-   --------------------------- */
-async function callTwitterDirect(endpoint, method='GET', body=null, bearer) {
-  // Direct call - likely blocked by CORS. For production: use backend proxy.
-  const url = `https://api.twitter.com/2/${endpoint}`;
-  const options = { method, headers: { 'Authorization': `Bearer ${bearer}`, 'Content-Type':'application/json' } };
-  if(body) options.body = JSON.stringify(body);
-  const r = await fetch(url, options);
-  return await r.json();
+
+const BACKEND_URL = "https://social-ads-backend.onrender.com";
+
+/* ===========================================================
+   🐦 TWITTER SECTION
+=========================================================== */
+async function callTwitterViaProxy(endpoint, method = 'GET', body = null) {
+  const url = `${BACKEND_URL}/twitter/${endpoint}`;
+  const options = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) options.body = JSON.stringify(body);
+  const res = await fetch(url, options);
+  return await res.json();
 }
 
-async function callTwitterViaProxy(proxyBase, endpoint, method='GET', body=null) {
-  // proxyBase should be your deployed backend proxy which forwards to Twitter with its own bearer token
-  // e.g. proxyBase = "https://your-proxy.onrender.com"
-  const url = `${proxyBase}/twitter/${endpoint}`;
-  const options = { method, headers: { 'Content-Type':'application/json'} };
-  if(body) options.body = JSON.stringify(body);
-  const r = await fetch(url, options);
-  return await r.json();
-}
-
+// Get Twitter Profile
 document.getElementById('btnGetTwitterProfile').onclick = async () => {
   const username = document.getElementById('twitterUsername').value.trim();
-  if(!username) return alert('Enter username');
-  const proxy = document.getElementById('twitterProxyUrl').value.trim();
-  const bearer = document.getElementById('twitterBearer').value.trim();
+  if (!username) return alert('Enter username');
 
   try {
-    let data;
-    if(proxy) {
-      // call your proxy that should forward request to Twitter with secret bearer stored on server
-      data = await callTwitterViaProxy(proxy, `users/by/username/${username}?user.fields=public_metrics,profile_image_url`);
-    } else {
-      // direct call (may be blocked by CORS)
-      if(!bearer) return alert('Provide a Bearer Token or a proxy URL. Direct browser calls are blocked by CORS—use a proxy in production.');
-      data = await callTwitterDirect(`users/by/username/${username}?user.fields=public_metrics,profile_image_url`, 'GET', null, bearer);
-    }
+    const data = await callTwitterViaProxy(
+      `users/by/username/${username}?user.fields=public_metrics,profile_image_url`
+    );
     document.getElementById('twitterProfile').textContent = JSON.stringify(data, null, 2);
-  } catch(e) {
-    console.error(e);
-    document.getElementById('twitterProfile').textContent = 'Request failed (likely CORS). Use a backend proxy.';
+  } catch (err) {
+    console.error(err);
+    document.getElementById('twitterProfile').textContent = 'Error fetching Twitter profile.';
   }
 };
 
+// Post Tweet
 document.getElementById('btnPostTweet').onclick = async () => {
   const text = document.getElementById('tweetContent').value.trim();
-  const proxy = document.getElementById('twitterProxyUrl').value.trim();
-  const bearer = document.getElementById('twitterBearer').value.trim();
-  if(!text) return alert('Enter tweet text');
-
+  if (!text) return alert('Enter tweet text');
   try {
-    let result;
-    if(proxy) {
-      result = await callTwitterViaProxy(proxy, `tweets`, 'POST', { text });
-    } else {
-      if(!bearer) return alert('Provide Bearer Token or proxy URL.');
-      result = await callTwitterDirect('tweets', 'POST', { text }, bearer);
-    }
+    const result = await callTwitterViaProxy(`tweets`, 'POST', { text });
     document.getElementById('tweetResult').textContent = JSON.stringify(result, null, 2);
-  } catch(e) { console.error(e); document.getElementById('tweetResult').textContent = 'Failed (CORS or permission).'; }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('tweetResult').textContent = 'Error posting tweet.';
+  }
 };
 
+// Get Tweet Metrics
 document.getElementById('btnGetTweetMetrics').onclick = async () => {
   const id = document.getElementById('tweetIdInput').value.trim();
-  const proxy = document.getElementById('twitterProxyUrl').value.trim();
-  const bearer = document.getElementById('twitterBearer').value.trim();
-  if(!id) return alert('Enter Tweet ID');
-
+  if (!id) return alert('Enter Tweet ID');
   try {
-    let d;
-    if(proxy) d = await callTwitterViaProxy(proxy, `tweets/${id}?tweet.fields=public_metrics`);
-    else {
-      if(!bearer) return alert('Provide Bearer Token or proxy URL.');
-      d = await callTwitterDirect(`tweets/${id}?tweet.fields=public_metrics`, 'GET', null, bearer);
+    const data = await callTwitterViaProxy(`tweets/${id}?tweet.fields=public_metrics`);
+    document.getElementById('tweetResult').textContent = JSON.stringify(data, null, 2);
+    if (data?.data?.public_metrics) {
+      const m = data.data.public_metrics;
+      if (twitterChart) twitterChart.destroy();
+      twitterChart = new Chart(document.getElementById('twitterChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(m),
+          datasets: [
+            { data: Object.values(m), backgroundColor: '#1DA1F2' }
+          ]
+        }
+      });
     }
-    document.getElementById('tweetResult').textContent = JSON.stringify(d, null, 2);
-    if(d && d.data && d.data.public_metrics) {
-      const m = d.data.public_metrics;
-      if(twitterChart) twitterChart.destroy();
-      twitterChart = new Chart(document.getElementById('twitterChart'), { type:'bar', data:{ labels:Object.keys(m), datasets:[{ data:Object.values(m), backgroundColor:'#1DA1F2' }] }});
-    }
-  } catch(e) { console.error(e); document.getElementById('tweetResult').textContent='Failed'; }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
+  }
 };
-
 
 /* ---------------------------
    YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client
@@ -531,3 +514,4 @@ document.getElementById('btnUploadVideo').onclick = () => {
 </script>
 </body>
 </html>
+
