@@ -120,21 +120,22 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-  <h3>▶️ YouTube (Google OAuth - modern flow)</h3>
-  <button id="btnGoogleLogin">Login with Google</button>
-  <button id="btnGoogleLogout" style="display:none">Logout</button>
+  <h3>📺 YouTube Ads Management</h3>
+  <button id="btnYTLogin">Login with Google</button>
+  <button id="btnYTLogout" style="display:none">Logout</button>
   <p id="ytStatus">Not logged in.</p>
-  <button id="btnGetChannelInfo">Get Channel Info</button>
-  <pre id="ytInfo"></pre>
-  <button id="btnGetYTAnalytics">Fetch Channel Analytics</button>
-  <div class="chart-container"><canvas id="ytChart"></canvas></div>
-  <label>Upload Video (stub):</label>
-  <input id="ytVideoTitle" placeholder="Video Title">
-  <textarea id="ytVideoDesc" placeholder="Video Description"></textarea>
-  <input id="ytVideoFile" type="file" accept="video/*">
-  <button id="btnUploadVideo">Upload Video (requires backend)</button>
+
+  <h4>🎬 Upload Ad Video</h4>
+  <input id="ytAdTitle" placeholder="Ad Title">
+  <input id="ytAdFile" type="file" accept="video/*">
+  <button id="btnUploadYTAd">Upload Ad</button>
   <pre id="ytUploadResult"></pre>
-  <div class="note">YouTube requires a valid OAuth token. Use the Login button and accept scopes. Make sure your Google OAuth client has your Netlify origin added as Authorized JavaScript origin.</div>
+
+  <h4>📊 Fetch Ad Metrics</h4>
+  <button id="btnGetYTAdMetrics">Get Ad Metrics</button>
+  <pre id="ytAdMetrics"></pre>
+
+  <canvas id="ytAdChart"></canvas>
 </div>
 
 </div>
@@ -422,101 +423,69 @@ document.getElementById('btnGetTweetMetrics').onclick = async () => {
 };
 
 /* ---------------------------
-   YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client
-   --------------------------- */
-let ytAccessToken = null;
-let ytTokenClient = null;
+   YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client */
+const YT_BACKEND_URL = "https://your-youtube-backend.onrender.com";
+const YT_GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
+let ytAccessToken = null,  ytTokenClient = null;
 
-// initialize gapi client for the youtube discovery doc
-function gapiInit() {
+function initYT() {
   gapi.load('client', async () => {
-    try {
-      await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
-    } catch(e){ console.warn('gapi.client.init failed', e); }
+    await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
   });
 }
 
-// Setup the token client on window load
-window.addEventListener('load', ()=> {
-  gapiInit();
+window.addEventListener('load', () => {
+  initYT();
   ytTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: YT_GOOGLE_CLIENT_ID,
     scope: 'https://www.googleapis.com/auth/youtube.readonly',
     callback: (resp) => {
-      if(resp.error) {
-        console.error('Token client error', resp);
-        alert('Google token error: ' + (resp.error || 'unknown'));
-        return;
-      }
+      if(resp.error) return alert('Login failed');
       ytAccessToken = resp.access_token;
-      document.getElementById('ytStatus').textContent = '✅ Logged in (Google)';
-      document.getElementById('btnGoogleLogin').style.display = 'none';
-      document.getElementById('btnGoogleLogout').style.display = 'inline-block';
+      document.getElementById('ytStatus').textContent = '✅ Logged in to YouTube';
+      document.getElementById('btnYTLogin').style.display = 'none';
+      document.getElementById('btnYTLogout').style.display = 'inline-block';
     }
   });
 });
 
-// Login
-document.getElementById('btnGoogleLogin').onclick = () => {
-  if(!ytTokenClient) return alert('Google client not initialized yet. Try again in a moment.');
-  ytTokenClient.requestAccessToken({ prompt: 'consent' }); // uses popup flow
-};
-
-// Logout
-document.getElementById('btnGoogleLogout').onclick = () => {
+document.getElementById('btnYTLogin').onclick = () => ytTokenClient.requestAccessToken({ prompt: 'consent' });
+document.getElementById('btnYTLogout').onclick = () => {
   ytAccessToken = null;
   document.getElementById('ytStatus').textContent = 'Logged out.';
-  document.getElementById('btnGoogleLogin').style.display = 'inline-block';
-  document.getElementById('btnGoogleLogout').style.display = 'none';
+  document.getElementById('btnYTLogin').style.display = 'inline-block';
+  document.getElementById('btnYTLogout').style.display = 'none';
 };
 
-// Get channel info (requires user to be logged in)
-document.getElementById('btnGetChannelInfo').onclick = async () => {
-  if(!ytAccessToken) return alert('Login with Google first.');
-  try {
-    gapi.client.setToken({ access_token: ytAccessToken });
-    const res = await gapi.client.youtube.channels.list({ mine: true, part: 'snippet,statistics' });
-    document.getElementById('ytInfo').textContent = JSON.stringify(res.result, null, 2);
-  } catch(e) {
-    console.error('YouTube channels.list error', e);
-    document.getElementById('ytInfo').textContent = 'YouTube request failed. See console.';
-  }
+// Upload Ad
+document.getElementById('btnUploadYTAd').onclick = async () => {
+  const file = document.getElementById('ytAdFile').files[0];
+  if(!file) return alert('Select an ad video');
+  const formData = new FormData();
+  formData.append("adFile", file);
+  const res = await fetch(`${YT_BACKEND_URL}/yt/upload`, { method: "POST", body: formData });
+  const data = await res.json();
+  document.getElementById('ytUploadResult').textContent = JSON.stringify(data, null, 2);
 };
 
-// Get basic analytics (statistics) and draw chart
-document.getElementById('btnGetYTAnalytics').onclick = async () => {
-  if(!ytAccessToken) return alert('Login with Google first.');
-  try {
-    gapi.client.setToken({ access_token: ytAccessToken });
-    const res = await gapi.client.youtube.channels.list({ mine:true, part:'statistics' });
-    if(res.result && res.result.items && res.result.items.length) {
-      const s = res.result.items[0].statistics;
-      if(ytChart) ytChart.destroy();
-      ytChart = new Chart(document.getElementById('ytChart'), {
-        type:'bar',
-        data: { labels: Object.keys(s), datasets: [{ data: Object.values(s), backgroundColor:'#FF0000' }] },
-        options: { plugins: { legend: { display:false } } }
-      });
-    } else {
-      document.getElementById('ytInfo').textContent = 'No channel data returned.';
-    }
-  } catch(e) {
-    console.error('YT analytics error', e);
-    document.getElementById('ytInfo').textContent = 'Failed to get analytics. See console.';
-  }
-};
+// Fetch Metrics
+document.getElementById('btnGetYTAdMetrics').onclick = async () => {
+  if(!ytAccessToken) return alert('Login first');
+  const res = await fetch(`${YT_BACKEND_URL}/yt/metrics?access_token=${ytAccessToken}`);
+  const data = await res.json();
+  document.getElementById('ytAdMetrics').textContent = JSON.stringify(data, null, 2);
 
-// Upload stub
-document.getElementById('btnUploadVideo').onclick = () => {
-  document.getElementById('ytUploadResult').textContent = 'Uploading requires resumable upload and backend support; see docs.';
+  const stats = data.items?.[0]?.statistics || {};
+  if(ytChart) ytChart.destroy();
+  ytChart = new Chart(document.getElementById('ytAdChart'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(stats),
+      datasets: [{ data: Object.values(stats), backgroundColor: '#FF0000' }]
+    },
+    options: { plugins: { legend: { display: false } } }
+  });
 };
-
-/* ---------------------------
-   Helpful UI tips on first load
-   --------------------------- */
-(function setDefaults(){
-  document.getElementById('twitterUsername').value = 'Kathirludus2710';
-})();
 </script>
 </body>
 </html>
