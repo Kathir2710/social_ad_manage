@@ -119,24 +119,38 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <pre id="twitterAccountMetrics"></pre>
 </div>
 <!-- YOUTUBE -->
-<div class="card section-color-7">
-  <h3>📺 YouTube Ads Management</h3>
-  <button id="btnYTLogin">Login with Google</button>
-  <button id="btnYTLogout" style="display:none">Logout</button>
-  <p id="ytStatus">Not logged in.</p>
+<div class="card section-color-7" id="ytAdCard">
+  <h3>▶️ YouTube Ads (Upload & Metrics)</h3>
 
-  <h4>🎬 Upload Ad Video</h4>
-  <input id="ytAdTitle" placeholder="Ad Title">
-  <input id="ytAdFile" type="file" accept="video/*">
-  <button id="btnUploadYTAd">Upload Ad</button>
-  <pre id="ytUploadResult"></pre>
+  <div>
+    <button id="btnYTLogin">Login with Google</button>
+    <button id="btnYTLogout" style="display:none">Logout</button>
+    <span id="ytLoginStatus">Not logged in.</span>
+  </div>
 
-  <h4>📊 Fetch Ad Metrics</h4>
-  <button id="btnGetYTAdMetrics">Get Ad Metrics</button>
-  <pre id="ytAdMetrics"></pre>
+  <hr>
+  <h4>Upload Ad Video to Channel</h4>
+  <input id="ytAdTitleInput" placeholder="Ad Title" />
+  <textarea id="ytAdDescInput" placeholder="Ad Description"></textarea>
+  <input id="ytAdFileInput" type="file" accept="video/*" />
+  <button id="btnUploadToYT">Upload Ad</button>
+  <pre id="ytUploadOutput"></pre>
 
-  <canvas id="ytAdChart"></canvas>
+  <hr>
+  <h4>Your Recent Uploads</h4>
+  <button id="btnListYT">List My Uploads</button>
+  <div id="ytUploadsList"></div>
+
+  <hr>
+  <h4>Fetch Metrics for a Video</h4>
+  <input id="ytMetricsVideoId" placeholder="Paste videoId (or click from list)" />
+  <input id="ytMetricsStart" type="date" />
+  <input id="ytMetricsEnd" type="date" />
+  <button id="btnGetYTMetrics">Get Video Metrics (last 7d default)</button>
+  <pre id="ytMetricsOutput"></pre>
+  <div style="width:100%;height:300px;"><canvas id="ytMetricsChart"></canvas></div>
 </div>
+
 
 </div>
 
@@ -423,69 +437,238 @@ document.getElementById('btnGetTweetMetrics').onclick = async () => {
 };
 
 /* ---------------------------
-   YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client */
-const YT_BACKEND_URL = "https://your-youtube-backend.onrender.com";
-const YT_GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
-let ytAccessToken = null,  ytTokenClient = null;
+//    YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client */
+// const YT_BACKEND_URL = "https://your-youtube-backend.onrender.com";
+// const YT_GOOGLE_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID";
+// let ytAccessToken = null,  ytTokenClient = null;
 
-function initYT() {
+// function initYT() {
+//   gapi.load('client', async () => {
+//     await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
+//   });
+// }
+
+// window.addEventListener('load', () => {
+//   initYT();
+//   ytTokenClient = google.accounts.oauth2.initTokenClient({
+//     client_id: YT_GOOGLE_CLIENT_ID,
+//     scope: 'https://www.googleapis.com/auth/youtube.readonly',
+//     callback: (resp) => {
+//       if(resp.error) return alert('Login failed');
+//       ytAccessToken = resp.access_token;
+//       document.getElementById('ytStatus').textContent = '✅ Logged in to YouTube';
+//       document.getElementById('btnYTLogin').style.display = 'none';
+//       document.getElementById('btnYTLogout').style.display = 'inline-block';
+//     }
+//   });
+// });
+
+// document.getElementById('btnYTLogin').onclick = () => ytTokenClient.requestAccessToken({ prompt: 'consent' });
+// document.getElementById('btnYTLogout').onclick = () => {
+//   ytAccessToken = null;
+//   document.getElementById('ytStatus').textContent = 'Logged out.';
+//   document.getElementById('btnYTLogin').style.display = 'inline-block';
+//   document.getElementById('btnYTLogout').style.display = 'none';
+// };
+
+// // Upload Ad
+// document.getElementById('btnUploadYTAd').onclick = async () => {
+//   const file = document.getElementById('ytAdFile').files[0];
+//   if(!file) return alert('Select an ad video');
+//   const formData = new FormData();
+//   formData.append("adFile", file);
+//   const res = await fetch(`${YT_BACKEND_URL}/yt/upload`, { method: "POST", body: formData });
+//   const data = await res.json();
+//   document.getElementById('ytUploadResult').textContent = JSON.stringify(data, null, 2);
+// };
+
+// // Fetch Metrics
+// document.getElementById('btnGetYTAdMetrics').onclick = async () => {
+//   if(!ytAccessToken) return alert('Login first');
+//   const res = await fetch(`${YT_BACKEND_URL}/yt/metrics?access_token=${ytAccessToken}`);
+//   const data = await res.json();
+//   document.getElementById('ytAdMetrics').textContent = JSON.stringify(data, null, 2);
+
+//   const stats = data.items?.[0]?.statistics || {};
+//   if(ytChart) ytChart.destroy();
+//   ytChart = new Chart(document.getElementById('ytAdChart'), {
+//     type: 'bar',
+//     data: {
+//       labels: Object.keys(stats),
+//       datasets: [{ data: Object.values(stats), backgroundColor: '#FF0000' }]
+//     },
+//     options: { plugins: { legend: { display: false } } }
+//   });
+// };
+
+const YT_FRONTEND_BACKEND = "https://social-ads-backend.onrender.com"; // your Render backend
+const YT_CLIENT_ID = "YOUR_GOOGLE_CLIENT_ID"; // <--- replace with your Google OAuth Client ID
+
+let yt_access_token = null;
+let yt_token_client = null;
+let yt_metrics_chart = null;
+
+// Initialize gapi client for YouTube
+function ytGapiInit() {
   gapi.load('client', async () => {
-    await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
+    try {
+      await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
+    } catch(e) { console.warn('gapi init failed', e); }
   });
 }
 
+/* Setup on load */
 window.addEventListener('load', () => {
-  initYT();
-  ytTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: YT_GOOGLE_CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/youtube.readonly',
+  ytGapiInit();
+
+  yt_token_client = google.accounts.oauth2.initTokenClient({
+    client_id: YT_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/youtube.readonly',
     callback: (resp) => {
-      if(resp.error) return alert('Login failed');
-      ytAccessToken = resp.access_token;
-      document.getElementById('ytStatus').textContent = '✅ Logged in to YouTube';
+      if (resp.error) {
+        console.error('YT token error', resp);
+        alert('Auth error: ' + (resp.error || 'unknown'));
+        return;
+      }
+      yt_access_token = resp.access_token;
+      document.getElementById('ytLoginStatus').textContent = '✅ Logged in';
       document.getElementById('btnYTLogin').style.display = 'none';
       document.getElementById('btnYTLogout').style.display = 'inline-block';
     }
   });
 });
 
-document.getElementById('btnYTLogin').onclick = () => ytTokenClient.requestAccessToken({ prompt: 'consent' });
+/* Buttons */
+document.getElementById('btnYTLogin').onclick = () => {
+  if (!yt_token_client) return alert('Auth client not ready');
+  yt_token_client.requestAccessToken({ prompt: 'consent' });
+};
 document.getElementById('btnYTLogout').onclick = () => {
-  ytAccessToken = null;
-  document.getElementById('ytStatus').textContent = 'Logged out.';
+  yt_access_token = null;
+  document.getElementById('ytLoginStatus').textContent = 'Not logged in';
   document.getElementById('btnYTLogin').style.display = 'inline-block';
   document.getElementById('btnYTLogout').style.display = 'none';
 };
 
-// Upload Ad
-document.getElementById('btnUploadYTAd').onclick = async () => {
-  const file = document.getElementById('ytAdFile').files[0];
-  if(!file) return alert('Select an ad video');
-  const formData = new FormData();
-  formData.append("adFile", file);
-  const res = await fetch(`${YT_BACKEND_URL}/yt/upload`, { method: "POST", body: formData });
-  const data = await res.json();
-  document.getElementById('ytUploadResult').textContent = JSON.stringify(data, null, 2);
+/* Upload ad */
+document.getElementById('btnUploadToYT').onclick = async () => {
+  if (!yt_access_token) return alert('Login with Google first');
+  const fileInput = document.getElementById('ytAdFileInput');
+  if (!fileInput.files || !fileInput.files[0]) return alert('Choose a video file');
+  const title = document.getElementById('ytAdTitleInput').value || 'Ad video';
+  const description = document.getElementById('ytAdDescInput').value || '';
+
+  const fd = new FormData();
+  fd.append('adFile', fileInput.files[0]);
+  fd.append('title', title);
+  fd.append('description', description);
+  fd.append('accessToken', yt_access_token);
+
+  document.getElementById('ytUploadOutput').textContent = 'Uploading...';
+
+  try {
+    const r = await fetch(`${YT_FRONTEND_BACKEND}/api/yt/upload`, { method: 'POST', body: fd });
+    const j = await r.json();
+    document.getElementById('ytUploadOutput').textContent = JSON.stringify(j, null, 2);
+    // show link if returned
+    if (j.videoUrl) {
+      const out = document.getElementById('ytUploadOutput');
+      out.textContent += `\nVideo URL: ${j.videoUrl}`;
+    }
+  } catch (err) {
+    console.error(err);
+    document.getElementById('ytUploadOutput').textContent = 'Upload failed: ' + err.message;
+  }
 };
 
-// Fetch Metrics
-document.getElementById('btnGetYTAdMetrics').onclick = async () => {
-  if(!ytAccessToken) return alert('Login first');
-  const res = await fetch(`${YT_BACKEND_URL}/yt/metrics?access_token=${ytAccessToken}`);
-  const data = await res.json();
-  document.getElementById('ytAdMetrics').textContent = JSON.stringify(data, null, 2);
+/* List my uploads */
+document.getElementById('btnListYT').onclick = async () => {
+  if (!yt_access_token) return alert('Login first');
+  document.getElementById('ytUploadsList').textContent = 'Loading...';
+  try {
+    const r = await fetch(`${YT_FRONTEND_BACKEND}/api/yt/videos?access_token=${yt_access_token}`);
+    const j = await r.json();
+    if(!j.items && !j.items) { /* fallback mapping */ }
+    const items = j.items || j.items === undefined ? j.items || j.items : j.items;
+    // compatibility: server returns { items: [...] }
+    const list = j.items || j.items === undefined ? j.items : j.items;
+    const arr = j.items || j.items === undefined ? j.items : j.items;
+    // Normalized:
+    const videos = j.items || j.items || [];
+    if (videos.length === 0) {
+      document.getElementById('ytUploadsList').textContent = 'No uploads found.';
+      return;
+    }
+    const html = videos.map(v => {
+      return `<div style="padding:8px;border-bottom:1px solid #eee;">
+        <img src="${v.thumbnail||''}" style="width:120px;height:68px;object-fit:cover;margin-right:8px;vertical-align:middle;">
+        <strong>${v.title}</strong><br>
+        <small>${v.publishedAt}</small><br>
+        <button data-vid="${v.videoId}" class="btnSelectVid">Use this for metrics</button>
+      </div>`;
+    }).join('');
+    document.getElementById('ytUploadsList').innerHTML = html;
 
-  const stats = data.items?.[0]?.statistics || {};
-  if(ytChart) ytChart.destroy();
-  ytChart = new Chart(document.getElementById('ytAdChart'), {
-    type: 'bar',
-    data: {
-      labels: Object.keys(stats),
-      datasets: [{ data: Object.values(stats), backgroundColor: '#FF0000' }]
-    },
-    options: { plugins: { legend: { display: false } } }
-  });
+    // attach onclicks
+    Array.from(document.getElementsByClassName('btnSelectVid')).forEach(btn => {
+      btn.onclick = () => {
+        const vid = btn.getAttribute('data-vid');
+        document.getElementById('ytMetricsVideoId').value = vid;
+      };
+    });
+  } catch (err) {
+    console.error(err);
+    document.getElementById('ytUploadsList').textContent = 'Failed to load uploads.';
+  }
 };
+
+/* Get metrics for a video */
+document.getElementById('btnGetYTMetrics').onclick = async () => {
+  if (!yt_access_token) return alert('Login first');
+  const videoId = document.getElementById('ytMetricsVideoId').value.trim();
+  if (!videoId) return alert('Provide a videoId (select from list or paste)');
+
+  // optional date range
+  const start = document.getElementById('ytMetricsStart').value || '';
+  const end = document.getElementById('ytMetricsEnd').value || '';
+
+  // build URL
+  let url = `${YT_FRONTEND_BACKEND}/api/yt/metrics?videoId=${encodeURIComponent(videoId)}`;
+  if (start) url += `&startDate=${encodeURIComponent(start)}`;
+  if (end) url += `&endDate=${encodeURIComponent(end)}`;
+
+  try {
+    const r = await fetch(url, {
+      headers: { Authorization: `Bearer ${yt_access_token}` }
+    });
+    const j = await r.json();
+    document.getElementById('ytMetricsOutput').textContent = JSON.stringify(j, null, 2);
+
+    // parse and plot: youtubeAnalytics.reports.query returns columnHeaders + rows
+    const rows = j.data?.rows || j.data?.rows || [];
+    if (!rows || rows.length === 0) {
+      // maybe aggregated metrics in j.data.totals?
+      return;
+    }
+
+    // rows are arrays; with dimensions day + metrics, so columns after dimension are metrics
+    // build labels and values
+    const labels = rows.map(r => r[0]); // day
+    // choose views index (metric index 0)
+    const values = rows.map(r => Number(r[1] || 0));
+
+    if (yt_metrics_chart) yt_metrics_chart.destroy();
+    yt_metrics_chart = new Chart(document.getElementById('ytMetricsChart'), {
+      type: 'line',
+      data: { labels, datasets: [{ label: 'Views', data: values }] },
+      options: {}
+    });
+  } catch (err) {
+    console.error(err);
+    document.getElementById('ytMetricsOutput').textContent = 'Failed to fetch metrics: ' + err.message;
+  }
+};
+
 </script>
 </body>
 </html>
