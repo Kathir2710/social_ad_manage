@@ -120,22 +120,21 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-  <h3>📺 YouTube Ads Management</h3>
-  <button id="btnYTLogin">Login with Google</button>
-  <button id="btnYTLogout" style="display:none">Logout</button>
+  <h3>▶️ YouTube (Google OAuth - modern flow)</h3>
+  <button id="btnGoogleLogin">Login with Google</button>
+  <button id="btnGoogleLogout" style="display:none">Logout</button>
   <p id="ytStatus">Not logged in.</p>
-
-  <h4>🎬 Upload Ad Video</h4>
-  <input id="ytAdTitle" placeholder="Ad Title">
-  <input id="ytAdFile" type="file" accept="video/*">
-  <button id="btnUploadYTAd">Upload Ad</button>
+  <button id="btnGetChannelInfo">Get Channel Info</button>
+  <pre id="ytInfo"></pre>
+  <button id="btnGetYTAnalytics">Fetch Channel Analytics</button>
+  <div class="chart-container"><canvas id="ytChart"></canvas></div>
+  <label>Upload Video (stub):</label>
+  <input id="ytVideoTitle" placeholder="Video Title">
+  <textarea id="ytVideoDesc" placeholder="Video Description"></textarea>
+  <input id="ytVideoFile" type="file" accept="video/*">
+  <button id="btnUploadVideo">Upload Video (requires backend)</button>
   <pre id="ytUploadResult"></pre>
-
-  <h4>📊 Fetch Ad Metrics</h4>
-  <button id="btnGetYTAdMetrics">Get Ad Metrics</button>
-  <pre id="ytAdMetrics"></pre>
-
-  <canvas id="ytAdChart"></canvas>
+  <div class="note">YouTube requires a valid OAuth token. Use the Login button and accept scopes. Make sure your Google OAuth client has your Netlify origin added as Authorized JavaScript origin.</div>
 </div>
 
 </div>
