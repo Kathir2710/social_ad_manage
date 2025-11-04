@@ -530,7 +530,7 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
 
   document.getElementById("ytUploadResult").textContent = "⏳ Uploading...";
 
-  const res = await fetch("http://localhost:5000/upload-video", {
+  const res = await fetch("https://social-ads-backend.onrender.com/upload-video", {
     method: "POST",
     headers: { Authorization: `Bearer ${ytAccessToken}` },
     body: formData,
@@ -540,48 +540,48 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
   document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
 };
 
-let scChart = null;
+// let scChart = null;
 
-document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
-  const accountId = document.getElementById('scAccountId').value.trim();
-  const campaignId = document.getElementById('scCampaignId').value.trim();
-  const start = document.getElementById('scStart').value.trim();
-  const end = document.getElementById('scEnd').value.trim();
-  const breakdowns = document.getElementById('scBreakdowns').value.trim();
+// document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
+//   const accountId = document.getElementById('scAccountId').value.trim();
+//   const campaignId = document.getElementById('scCampaignId').value.trim();
+//   const start = document.getElementById('scStart').value.trim();
+//   const end = document.getElementById('scEnd').value.trim();
+//   const breakdowns = document.getElementById('scBreakdowns').value.trim();
 
-  if (!accountId || !campaignId || !start || !end) return alert('Enter all fields');
+//   if (!accountId || !campaignId || !start || !end) return alert('Enter all fields');
 
-  const url = `/api/snapchat/metrics?accountId=${accountId}&campaignId=${campaignId}&startTime=${start}&endTime=${end}&breakdowns=${encodeURIComponent(breakdowns)}`;
+//   const url = `/api/snapchat/metrics?accountId=${accountId}&campaignId=${campaignId}&startTime=${start}&endTime=${end}&breakdowns=${encodeURIComponent(breakdowns)}`;
 
-  try {
-    const res = await fetch(url);
-    const json = await res.json();
-    document.getElementById('scResult').textContent = JSON.stringify(json, null, 2);
+//   try {
+//     const res = await fetch(url);
+//     const json = await res.json();
+//     document.getElementById('scResult').textContent = JSON.stringify(json, null, 2);
 
-    if (json.success && json.data && json.data.timeseries_stats) {
-      const series = json.data.timeseries_stats[0].timeseries;
-      const labels = series.map(x => x.start_time.split('T')[0]);
-      const impressions = series.map(x => x.stats.impressions || 0);
-      const swipes = series.map(x => x.stats.swipes || 0);
-      // you can add more metrics here
-      if (scChart) scChart.destroy();
-      scChart = new Chart(document.getElementById('scChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            { label: 'Impressions', data: impressions, borderColor: '#FFFC00', fill:false },
-            { label: 'Swipes', data: swipes, borderColor: '#FF9F1C', fill:false }
-          ]
-        }
-      });
-    }
+//     if (json.success && json.data && json.data.timeseries_stats) {
+//       const series = json.data.timeseries_stats[0].timeseries;
+//       const labels = series.map(x => x.start_time.split('T')[0]);
+//       const impressions = series.map(x => x.stats.impressions || 0);
+//       const swipes = series.map(x => x.stats.swipes || 0);
+//       // you can add more metrics here
+//       if (scChart) scChart.destroy();
+//       scChart = new Chart(document.getElementById('scChart'), {
+//         type: 'line',
+//         data: {
+//           labels,
+//           datasets: [
+//             { label: 'Impressions', data: impressions, borderColor: '#FFFC00', fill:false },
+//             { label: 'Swipes', data: swipes, borderColor: '#FF9F1C', fill:false }
+//           ]
+//         }
+//       });
+//     }
 
-  } catch (err) {
-    console.error(err);
-    document.getElementById('scResult').textContent = 'Error fetching Snapchat metrics';
-  }
-};
+//   } catch (err) {
+//     console.error(err);
+//     document.getElementById('scResult').textContent = 'Error fetching Snapchat metrics';
+//   }
+// };
 
 /* ---------------------------
    Helpful UI tips on first load
