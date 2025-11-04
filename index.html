@@ -120,22 +120,53 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-  <h3>▶️ YouTube (Google OAuth - modern flow)</h3>
-  <button id="btnGoogleLogin">Login with Google</button>
-  <button id="btnGoogleLogout" style="display:none">Logout</button>
-  <p id="ytStatus">Not logged in.</p>
-  <button id="btnGetChannelInfo">Get Channel Info</button>
-  <pre id="ytInfo"></pre>
-  <button id="btnGetYTAnalytics">Fetch Channel Analytics</button>
-  <div class="chart-container"><canvas id="ytChart"></canvas></div>
-  <label>Upload Video (stub):</label>
-  <input id="ytVideoTitle" placeholder="Video Title">
-  <textarea id="ytVideoDesc" placeholder="Video Description"></textarea>
-  <input id="ytVideoFile" type="file" accept="video/*">
-  <button id="btnUploadVideo">Upload Video (requires backend)</button>
+   <h1>📊 YouTube Ads Upload & Analytics</h1>
+
+  <div class="controls">
+    <button id="btnGoogleLogin">Login with Google</button>
+    <button id="btnGoogleLogout" style="display:none;">Logout</button>
+    <span id="ytStatus">Not logged in</span>
+  </div>
+
+  <hr>
+
+  <div>
+    <button id="btnGetChannelInfo">Get Channel Info</button>
+    <button id="btnGetYTAnalytics">View Analytics</button>
+    <pre id="ytInfo"></pre>
+  </div>
+
+  <hr>
+
+  <h3>🎥 Upload Your Ad</h3>
+  <form id="uploadForm">
+    <input type="text" id="title" placeholder="Video Title" required /><br>
+    <textarea id="description" placeholder="Description"></textarea><br>
+    <select id="privacy">
+      <option value="public">Public</option>
+      <option value="unlisted">Unlisted</option>
+      <option value="private" selected>Private</option>
+    </select><br>
+    <input type="file" id="videoFile" accept="video/*" required /><br>
+    <button type="submit">Upload Video</button>
+  </form>
   <pre id="ytUploadResult"></pre>
-  <div class="note">YouTube requires a valid OAuth token. Use the Login button and accept scopes. Make sure your Google OAuth client has your Netlify origin added as Authorized JavaScript origin.</div>
+
+  <canvas id="ytChart" width="400" height="200"></canvas>
 </div>
+
+<div class="card section-color-?" id="snapchatSection">
+  <h3>👻 Snapchat Campaign Metrics</h3>
+  <input id="scAccountId" placeholder="Ad Account ID">
+  <input id="scCampaignId" placeholder="Campaign ID">
+  <input id="scStart" placeholder="Start Date (YYYY-MM-DD)">
+  <input id="scEnd" placeholder="End Date (YYYY-MM-DD)">
+  <input id="scBreakdowns" placeholder="Breakdowns (comma, e.g., age_range,region)">
+  <button id="btnGetSnapchatMetrics">Fetch Snapchat Metrics</button>
+  <pre id="scResult"></pre>
+  <div class="chart-container"><canvas id="scChart"></canvas></div>
+</div>
+
 
 </div>
 
@@ -356,159 +387,200 @@ document.getElementById('btnGetInstaInsights').onclick = () => {
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
 
 /* ===========================================================
-   🐦 TWITTER SECTION
-=========================================================== */
-async function callTwitterViaProxy(endpoint, method = 'GET', body = null) {
-  const url = `${BACKEND_URL}/twitter/${endpoint}`;
-  const options = { method, headers: { 'Content-Type': 'application/json' } };
-  if (body) options.body = JSON.stringify(body);
-  const res = await fetch(url, options);
-  return await res.json();
+//    🐦 TWITTER SECTION
+// =========================================================== */
+// async function callTwitterViaProxy(endpoint, method = 'GET', body = null) {
+//   const url = `${BACKEND_URL}/twitter/${endpoint}`;
+//   const options = { method, headers: { 'Content-Type': 'application/json' } };
+//   if (body) options.body = JSON.stringify(body);
+//   const res = await fetch(url, options);
+//   return await res.json();
+// }
+
+// // Get Twitter Profile
+// document.getElementById('btnGetTwitterProfile').onclick = async () => {
+//   const username = document.getElementById('twitterUsername').value.trim();
+//   if (!username) return alert('Enter username');
+
+//   try {
+//     const data = await callTwitterViaProxy(
+//       `users/by/username/${username}?user.fields=public_metrics,profile_image_url`
+//     );
+//     document.getElementById('twitterProfile').textContent = JSON.stringify(data, null, 2);
+//   } catch (err) {
+//     console.error(err);
+//     document.getElementById('twitterProfile').textContent = 'Error fetching Twitter profile.';
+//   }
+// };
+
+// // Post Tweet
+// document.getElementById('btnPostTweet').onclick = async () => {
+//   const text = document.getElementById('tweetContent').value.trim();
+//   if (!text) return alert('Enter tweet text');
+//   try {
+//     const result = await callTwitterViaProxy(`tweets`, 'POST', { text });
+//     document.getElementById('tweetResult').textContent = JSON.stringify(result, null, 2);
+//   } catch (err) {
+//     console.error(err);
+//     document.getElementById('tweetResult').textContent = 'Error posting tweet.';
+//   }
+// };
+
+// // Get Tweet Metrics
+// document.getElementById('btnGetTweetMetrics').onclick = async () => {
+//   const id = document.getElementById('tweetIdInput').value.trim();
+//   if (!id) return alert('Enter Tweet ID');
+//   try {
+//     const data = await callTwitterViaProxy(`tweets/${id}?tweet.fields=public_metrics`);
+//     document.getElementById('tweetResult').textContent = JSON.stringify(data, null, 2);
+//     if (data?.data?.public_metrics) {
+//       const m = data.data.public_metrics;
+//       if (twitterChart) twitterChart.destroy();
+//       twitterChart = new Chart(document.getElementById('twitterChart'), {
+//         type: 'bar',
+//         data: {
+//           labels: Object.keys(m),
+//           datasets: [
+//             { data: Object.values(m), backgroundColor: '#1DA1F2' }
+//           ]
+//         }
+//       });
+//     }
+//   } catch (err) {
+//     console.error(err);
+//     document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
+//   }
+// };
+const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
+let ytAccessToken = null, ytTokenClient = null;
+
+// Init GAPI client
+function gapiInit() {
+  gapi.load("client", () => {
+    gapi.client.setApiKey("AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48");
+    gapi.client.load("youtube", "v3");
+  });
 }
 
-// Get Twitter Profile
-document.getElementById('btnGetTwitterProfile').onclick = async () => {
-  const username = document.getElementById('twitterUsername').value.trim();
-  if (!username) return alert('Enter username');
+// Setup OAuth on window load
+window.addEventListener("load", () => {
+  gapiInit();
+  ytTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: YT_GOOGLE_CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+    callback: (resp) => {
+      if (resp.error) {
+        alert("Google token error: " + resp.error);
+        return;
+      }
+      ytAccessToken = resp.access_token;
+      document.getElementById("ytStatus").textContent = "✅ Logged in (Google)";
+      document.getElementById("btnGoogleLogin").style.display = "none";
+      document.getElementById("btnGoogleLogout").style.display = "inline-block";
+    },
+  });
+});
 
-  try {
-    const data = await callTwitterViaProxy(
-      `users/by/username/${username}?user.fields=public_metrics,profile_image_url`
-    );
-    document.getElementById('twitterProfile').textContent = JSON.stringify(data, null, 2);
-  } catch (err) {
-    console.error(err);
-    document.getElementById('twitterProfile').textContent = 'Error fetching Twitter profile.';
-  }
+document.getElementById("btnGoogleLogin").onclick = () => {
+  if (!ytTokenClient) return alert("Try again later.");
+  ytTokenClient.requestAccessToken({ prompt: "consent" });
 };
 
-// Post Tweet
-document.getElementById('btnPostTweet').onclick = async () => {
-  const text = document.getElementById('tweetContent').value.trim();
-  if (!text) return alert('Enter tweet text');
-  try {
-    const result = await callTwitterViaProxy(`tweets`, 'POST', { text });
-    document.getElementById('tweetResult').textContent = JSON.stringify(result, null, 2);
-  } catch (err) {
-    console.error(err);
-    document.getElementById('tweetResult').textContent = 'Error posting tweet.';
-  }
+document.getElementById("btnGoogleLogout").onclick = () => {
+  ytAccessToken = null;
+  document.getElementById("ytStatus").textContent = "Logged out.";
+  document.getElementById("btnGoogleLogin").style.display = "inline-block";
+  document.getElementById("btnGoogleLogout").style.display = "none";
 };
 
-// Get Tweet Metrics
-document.getElementById('btnGetTweetMetrics').onclick = async () => {
-  const id = document.getElementById('tweetIdInput').value.trim();
-  if (!id) return alert('Enter Tweet ID');
+// Channel Info
+document.getElementById("btnGetChannelInfo").onclick = async () => {
+  if (!ytAccessToken) return alert("Login first.");
+  gapi.client.setToken({ access_token: ytAccessToken });
+  const res = await gapi.client.youtube.channels.list({ mine: true, part: "snippet,statistics" });
+  document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
+};
+
+// Analytics
+document.getElementById("btnGetYTAnalytics").onclick = async () => {
+  if (!ytAccessToken) return alert("Login first.");
+  gapi.client.setToken({ access_token: ytAccessToken });
+  const res = await gapi.client.youtube.channels.list({ mine: true, part: "statistics" });
+  const s = res.result.items[0].statistics;
+  if (ytChart) ytChart.destroy();
+  ytChart = new Chart(document.getElementById("ytChart"), {
+    type: "bar",
+    data: { labels: Object.keys(s), datasets: [{ data: Object.values(s), backgroundColor: "#ff0000" }] },
+    options: { plugins: { legend: { display: false } } },
+  });
+};
+
+// Upload Video
+document.getElementById("uploadForm").onsubmit = async (e) => {
+  e.preventDefault();
+  if (!ytAccessToken) return alert("Login first.");
+  const file = document.getElementById("videoFile").files[0];
+  if (!file) return alert("Select a video.");
+
+  const formData = new FormData();
+  formData.append("video", file);
+  formData.append("title", document.getElementById("title").value);
+  formData.append("description", document.getElementById("description").value);
+  formData.append("privacyStatus", document.getElementById("privacy").value);
+
+  document.getElementById("ytUploadResult").textContent = "⏳ Uploading...";
+
+  const res = await fetch("http://localhost:5000/upload-video", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${ytAccessToken}` },
+    body: formData,
+  });
+
+  const data = await res.json();
+  document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
+};
+
+let scChart = null;
+
+document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
+  const accountId = document.getElementById('scAccountId').value.trim();
+  const campaignId = document.getElementById('scCampaignId').value.trim();
+  const start = document.getElementById('scStart').value.trim();
+  const end = document.getElementById('scEnd').value.trim();
+  const breakdowns = document.getElementById('scBreakdowns').value.trim();
+
+  if (!accountId || !campaignId || !start || !end) return alert('Enter all fields');
+
+  const url = `/api/snapchat/metrics?accountId=${accountId}&campaignId=${campaignId}&startTime=${start}&endTime=${end}&breakdowns=${encodeURIComponent(breakdowns)}`;
+
   try {
-    const data = await callTwitterViaProxy(`tweets/${id}?tweet.fields=public_metrics`);
-    document.getElementById('tweetResult').textContent = JSON.stringify(data, null, 2);
-    if (data?.data?.public_metrics) {
-      const m = data.data.public_metrics;
-      if (twitterChart) twitterChart.destroy();
-      twitterChart = new Chart(document.getElementById('twitterChart'), {
-        type: 'bar',
+    const res = await fetch(url);
+    const json = await res.json();
+    document.getElementById('scResult').textContent = JSON.stringify(json, null, 2);
+
+    if (json.success && json.data && json.data.timeseries_stats) {
+      const series = json.data.timeseries_stats[0].timeseries;
+      const labels = series.map(x => x.start_time.split('T')[0]);
+      const impressions = series.map(x => x.stats.impressions || 0);
+      const swipes = series.map(x => x.stats.swipes || 0);
+      // you can add more metrics here
+      if (scChart) scChart.destroy();
+      scChart = new Chart(document.getElementById('scChart'), {
+        type: 'line',
         data: {
-          labels: Object.keys(m),
+          labels,
           datasets: [
-            { data: Object.values(m), backgroundColor: '#1DA1F2' }
+            { label: 'Impressions', data: impressions, borderColor: '#FFFC00', fill:false },
+            { label: 'Swipes', data: swipes, borderColor: '#FF9F1C', fill:false }
           ]
         }
       });
     }
+
   } catch (err) {
     console.error(err);
-    document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
+    document.getElementById('scResult').textContent = 'Error fetching Snapchat metrics';
   }
-};
-
-/* ---------------------------
-   YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client
-   --------------------------- */
-let ytAccessToken = null;
-let ytTokenClient = null;
-
-// initialize gapi client for the youtube discovery doc
-function gapiInit() {
-  gapi.load('client', async () => {
-    try {
-      await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
-    } catch(e){ console.warn('gapi.client.init failed', e); }
-  });
-}
-
-// Setup the token client on window load
-window.addEventListener('load', ()=> {
-  gapiInit();
-  ytTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: 'https://www.googleapis.com/auth/youtube.readonly',
-    callback: (resp) => {
-      if(resp.error) {
-        console.error('Token client error', resp);
-        alert('Google token error: ' + (resp.error || 'unknown'));
-        return;
-      }
-      ytAccessToken = resp.access_token;
-      document.getElementById('ytStatus').textContent = '✅ Logged in (Google)';
-      document.getElementById('btnGoogleLogin').style.display = 'none';
-      document.getElementById('btnGoogleLogout').style.display = 'inline-block';
-    }
-  });
-});
-
-// Login
-document.getElementById('btnGoogleLogin').onclick = () => {
-  if(!ytTokenClient) return alert('Google client not initialized yet. Try again in a moment.');
-  ytTokenClient.requestAccessToken({ prompt: 'consent' }); // uses popup flow
-};
-
-// Logout
-document.getElementById('btnGoogleLogout').onclick = () => {
-  ytAccessToken = null;
-  document.getElementById('ytStatus').textContent = 'Logged out.';
-  document.getElementById('btnGoogleLogin').style.display = 'inline-block';
-  document.getElementById('btnGoogleLogout').style.display = 'none';
-};
-
-// Get channel info (requires user to be logged in)
-document.getElementById('btnGetChannelInfo').onclick = async () => {
-  if(!ytAccessToken) return alert('Login with Google first.');
-  try {
-    gapi.client.setToken({ access_token: ytAccessToken });
-    const res = await gapi.client.youtube.channels.list({ mine: true, part: 'snippet,statistics' });
-    document.getElementById('ytInfo').textContent = JSON.stringify(res.result, null, 2);
-  } catch(e) {
-    console.error('YouTube channels.list error', e);
-    document.getElementById('ytInfo').textContent = 'YouTube request failed. See console.';
-  }
-};
-
-// Get basic analytics (statistics) and draw chart
-document.getElementById('btnGetYTAnalytics').onclick = async () => {
-  if(!ytAccessToken) return alert('Login with Google first.');
-  try {
-    gapi.client.setToken({ access_token: ytAccessToken });
-    const res = await gapi.client.youtube.channels.list({ mine:true, part:'statistics' });
-    if(res.result && res.result.items && res.result.items.length) {
-      const s = res.result.items[0].statistics;
-      if(ytChart) ytChart.destroy();
-      ytChart = new Chart(document.getElementById('ytChart'), {
-        type:'bar',
-        data: { labels: Object.keys(s), datasets: [{ data: Object.values(s), backgroundColor:'#FF0000' }] },
-        options: { plugins: { legend: { display:false } } }
-      });
-    } else {
-      document.getElementById('ytInfo').textContent = 'No channel data returned.';
-    }
-  } catch(e) {
-    console.error('YT analytics error', e);
-    document.getElementById('ytInfo').textContent = 'Failed to get analytics. See console.';
-  }
-};
-
-// Upload stub
-document.getElementById('btnUploadVideo').onclick = () => {
-  document.getElementById('ytUploadResult').textContent = 'Uploading requires resumable upload and backend support; see docs.';
 };
 
 /* ---------------------------
