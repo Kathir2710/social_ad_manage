@@ -95,6 +95,18 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <div class="note">Instagram features require the Facebook Page to be linked to an Instagram Business account and the app to have approved permissions.</div>
 </div>
 
+<div class="card section-color-1">
+  <h3>💬 WhatsApp Business API</h3>
+  <button id="btnGetWhatsAppInfo">Fetch WhatsApp Info</button>
+  <pre id="waInfo"></pre>
+
+  <textarea id="waMessage" placeholder="Enter message to send"></textarea>
+  <input id="waPhone" placeholder="Recipient phone in E.164 (e.g. +919876543210)" />
+  <button id="btnSendWA">Send WhatsApp Message</button>
+  <pre id="waResult"></pre>
+</div>
+
+
 <!-- TWITTER -->
 <div class="card section-color-5">
   <h3>🐦 Twitter (via backend proxy)</h3>
@@ -120,7 +132,7 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-   <h1>📊 YouTube Ads Upload & Analytics</h1>
+  <h1>📊 YouTube Ads Upload & Analytics</h1>
 
   <div class="controls">
     <button id="btnGoogleLogin">Login with Google</button>
@@ -133,12 +145,14 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <div>
     <button id="btnGetChannelInfo">Get Channel Info</button>
     <button id="btnGetYTAnalytics">View Analytics</button>
+    <button id="btnGetAdVideoMetrics">Get Ad Video Metrics</button>
     <pre id="ytInfo"></pre>
+    <pre id="ytMetrics"></pre>
   </div>
 
   <hr>
 
-  <h3>🎥 Upload Your Ad</h3>
+  <h3>🎥 Upload Your Ad / Video</h3>
   <form id="uploadForm">
     <input type="text" id="title" placeholder="Video Title" required /><br>
     <textarea id="description" placeholder="Description"></textarea><br>
@@ -154,6 +168,7 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
   <canvas id="ytChart" width="400" height="200"></canvas>
 </div>
+
 
 <div class="card section-color-?" id="snapchatSection">
   <h3>👻 Snapchat Campaign Metrics</h3>
@@ -383,6 +398,45 @@ document.getElementById('btnGetInstaInsights').onclick = () => {
 };
 
 
+// WhatsApp Section
+document.getElementById('btnGetWhatsAppInfo').onclick = () => {
+  FB.api('/me?fields=whatsapp_business_accounts', { access_token: userAccessToken }, res => {
+    if (!res || res.error) {
+      document.getElementById('waInfo').textContent = 'Error fetching WhatsApp accounts.';
+      console.error(res);
+      return;
+    }
+    document.getElementById('waInfo').textContent = JSON.stringify(res, null, 2);
+  });
+};
+
+document.getElementById('btnSendWA').onclick = async () => {
+  const msg = document.getElementById('waMessage').value;
+  const phone = document.getElementById('waPhone').value;
+  if (!msg || !phone) return alert('Enter both phone and message');
+
+  const waBusinessId = "<YOUR_WHATSAPP_BUSINESS_ID>"; // Replace with your verified ID
+  const token = userAccessToken;
+
+  const res = await fetch(`https://graph.facebook.com/v19.0/${waBusinessId}/messages`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      messaging_product: 'whatsapp',
+      to: phone,
+      type: 'text',
+      text: { body: msg }
+    })
+  });
+
+  const data = await res.json();
+  document.getElementById('waResult').textContent = JSON.stringify(data, null, 2);
+};
+
+
 
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
 
@@ -451,14 +505,20 @@ const BACKEND_URL = "https://social-ads-backend.onrender.com";
 //     document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
 //   }
 // };
+// 
 const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
-let ytAccessToken = null, ytTokenClient = null;
+const YT_API_KEY = "AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48";  // your Google API key
+let ytAccessToken = null;
+let ytTokenClient = null;
+
 
 // Init GAPI client
 function gapiInit() {
   gapi.load("client", () => {
-    gapi.client.setApiKey("AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48");
-    gapi.client.load("youtube", "v3");
+    gapi.client.setApiKey(YT_API_KEY);
+    gapi.client.load("youtube", "v3").then(() => {
+      console.log("YouTube Data API loaded");
+    });
   });
 }
 
@@ -467,7 +527,7 @@ window.addEventListener("load", () => {
   gapiInit();
   ytTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: YT_GOOGLE_CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
     callback: (resp) => {
       if (resp.error) {
         alert("Google token error: " + resp.error);
@@ -497,7 +557,10 @@ document.getElementById("btnGoogleLogout").onclick = () => {
 document.getElementById("btnGetChannelInfo").onclick = async () => {
   if (!ytAccessToken) return alert("Login first.");
   gapi.client.setToken({ access_token: ytAccessToken });
-  const res = await gapi.client.youtube.channels.list({ mine: true, part: "snippet,statistics" });
+  const res = await gapi.client.youtube.channels.list({
+    mine: true,
+    part: "snippet,statistics"
+  });
   document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
 };
 
@@ -505,14 +568,67 @@ document.getElementById("btnGetChannelInfo").onclick = async () => {
 document.getElementById("btnGetYTAnalytics").onclick = async () => {
   if (!ytAccessToken) return alert("Login first.");
   gapi.client.setToken({ access_token: ytAccessToken });
-  const res = await gapi.client.youtube.channels.list({ mine: true, part: "statistics" });
+  const res = await gapi.client.youtube.channels.list({
+    mine: true,
+    part: "statistics"
+  });
   const s = res.result.items[0].statistics;
   if (ytChart) ytChart.destroy();
   ytChart = new Chart(document.getElementById("ytChart"), {
     type: "bar",
-    data: { labels: Object.keys(s), datasets: [{ data: Object.values(s), backgroundColor: "#ff0000" }] },
-    options: { plugins: { legend: { display: false } } },
+    data: {
+      labels: Object.keys(s),
+      datasets: [{
+        data: Object.values(s),
+        backgroundColor: "#ff0000"
+      }]
+    },
+    options: { plugins: { legend: { display: false } } }
   });
+};
+
+// Ad Video Metrics (via Analytics API)
+document.getElementById("btnGetAdVideoMetrics").onclick = async () => {
+  if (!ytAccessToken) return alert("Login first.");
+  const videoId = prompt("Enter the YouTube Video ID for your ad:");
+  if (!videoId) return;
+  const startDate = prompt("Enter start date (YYYY-MM-DD):", "2025-01-01");
+  const endDate = prompt("Enter end date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+
+  // Use Analytics API v2 endpoint
+  const url = `https://youtubeanalytics.googleapis.com/v2/reports?`
+    + `ids=channel==MINE&startDate=${startDate}&endDate=${endDate}`
+    + `&metrics=views,estimatedMinutesWatched,averageViewDuration`
+    + `&dimensions=day`
+    + `&filters=video==${videoId}`;
+
+  const res = await fetch(url, {
+    method: "GET",
+    headers: {
+      "Authorization": `Bearer ${ytAccessToken}`,
+      "Accept": "application/json"
+    }
+  });
+  const data = await res.json();
+  document.getElementById("ytMetrics").textContent = JSON.stringify(data, null, 2);
+
+  if (data.rows && data.rows.length) {
+    const labels = data.rows.map(r => r[0]);
+    const values = data.rows.map(r => r[1]);
+    if (ytChart) ytChart.destroy();
+    ytChart = new Chart(document.getElementById("ytChart"), {
+      type: "line",
+      data: {
+        labels,
+        datasets: [{
+          label: "Views",
+          data: values,
+          borderColor: "#ff0000",
+          fill: false
+        }]
+      }
+    });
+  }
 };
 
 // Upload Video
@@ -539,7 +655,6 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
   const data = await res.json();
   document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
 };
-
 // let scChart = null;
 
 // document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
