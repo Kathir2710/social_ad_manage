@@ -378,23 +378,57 @@ document.getElementById('btnInstaPost').onclick = () => {
 };
 
 // instagram insights
+// Instagram Insights (Account Level)
 document.getElementById('btnGetInstaInsights').onclick = () => {
-  if(!selectedPage) return alert('Select page first');
-  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, { access_token: selectedPage.access_token }, r => {
-    if(!r || !r.instagram_business_account) return alert('No IG linked');
-    const igId = r.instagram_business_account.id;
-    FB.api(`/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`, { access_token: selectedPage.access_token }, res => {
-      if(!res || res.error) { document.getElementById('instaInfo').textContent='Failed to fetch IG insights'; console.error(res); return; }
-      if(res.data) {
-        const labels = res.data.map(i=>i.name);
-        const values = res.data.map(i=>i.values[0].value);
-        if(instaChart) instaChart.destroy();
-        instaChart = new Chart(document.getElementById('instaChart'), { type:'bar', data:{ labels, datasets:[{ data: values, backgroundColor: '#E1306C' }] }});
-      } else {
-        document.getElementById('instaInfo').textContent = 'No IG insights returned.';
-      }
-    });
-  });
+  if (!selectedPage) return alert('Select page first');
+  
+  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, 
+    { access_token: selectedPage.access_token }, 
+    r => {
+      if (!r || !r.instagram_business_account) return alert('No IG linked');
+      const igId = r.instagram_business_account.id;
+
+      // Correct available metrics for account insights
+      // Docs: https://developers.facebook.com/docs/instagram-api/reference/ig-user/insights
+      const metrics = 'impressions,reach,profile_views,followers_count,email_contacts,phone_call_clicks,website_clicks';
+      
+      FB.api(
+        `/${igId}/insights?metric=${metrics}&period=day`, 
+        { access_token: selectedPage.access_token }, 
+        res => {
+          if (!res || res.error) {
+            document.getElementById('instaInfo').textContent = 'Failed to fetch IG insights';
+            console.error(res);
+            return;
+          }
+
+          if (res.data && res.data.length > 0) {
+            const labels = res.data.map(i => i.title || i.name);
+            const values = res.data.map(i => i.values[0]?.value || 0);
+
+            if (instaChart) instaChart.destroy();
+            instaChart = new Chart(document.getElementById('instaChart'), {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [{ 
+                  data: values, 
+                  backgroundColor: '#E1306C' 
+                }]
+              },
+              options: { 
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true } }
+              }
+            });
+            document.getElementById('instaInfo').textContent = JSON.stringify(res.data, null, 2);
+          } else {
+            document.getElementById('instaInfo').textContent = 'No IG insights data found.';
+          }
+        }
+      );
+    }
+  );
 };
 
 
