@@ -132,7 +132,7 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-  <h1>📊 YouTube Ads Upload & Analytics</h1>
+  <h1>📊 YouTube Ads Analytics</h1>
 
   <div class="controls">
     <button id="btnGoogleLogin">Login with Google</button>
@@ -144,31 +144,14 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 
   <div>
     <button id="btnGetChannelInfo">Get Channel Info</button>
-    <button id="btnGetYTAnalytics">View Analytics</button>
+    <button id="btnGetYTAnalytics">View Channel Analytics</button>
     <button id="btnGetAdVideoMetrics">Get Ad Video Metrics</button>
     <pre id="ytInfo"></pre>
     <pre id="ytMetrics"></pre>
   </div>
 
-  <hr>
-
-  <h3>🎥 Upload Your Ad / Video</h3>
-  <form id="uploadForm">
-    <input type="text" id="title" placeholder="Video Title" required /><br>
-    <textarea id="description" placeholder="Description"></textarea><br>
-    <select id="privacy">
-      <option value="public">Public</option>
-      <option value="unlisted">Unlisted</option>
-      <option value="private" selected>Private</option>
-    </select><br>
-    <input type="file" id="videoFile" accept="video/*" required /><br>
-    <button type="submit">Upload Video</button>
-  </form>
-  <pre id="ytUploadResult"></pre>
-
   <canvas id="ytChart" width="400" height="200"></canvas>
 </div>
-
 
 <div class="card section-color-?" id="snapchatSection">
   <h3>👻 Snapchat Campaign Metrics</h3>
@@ -206,7 +189,7 @@ const GOOGLE_CLIENT_ID = '909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.goo
    --------------------------- */
 const FB_SCOPES = 'public_profile,pages_show_list,pages_manage_posts,pages_read_engagement,ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights,instagram_content_publish';
 let userAccessToken=null, pages=[], selectedPage=null, adAccounts=[], selectedAdAccount=null;
-let pageChart=null, instaChart=null, twitterChart=null, ytChart=null, adChart=null;
+let pageChart=null, instaChart=null, twitterChart=null,  adChart=null;
 
 /* ---------------------------
    FACEBOOK: init + helpers
@@ -550,10 +533,10 @@ const BACKEND_URL = "https://social-ads-backend.onrender.com";
 // };
 // 
 const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
-const YT_API_KEY = "AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48";  // your Google API key
+const YT_API_KEY = "AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48";
 let ytAccessToken = null;
 let ytTokenClient = null;
-
+let ytChart = null;
 
 // Init GAPI client
 function gapiInit() {
@@ -570,7 +553,7 @@ window.addEventListener("load", () => {
   gapiInit();
   ytTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: YT_GOOGLE_CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
+    scope: "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
     callback: (resp) => {
       if (resp.error) {
         alert("Google token error: " + resp.error);
@@ -596,7 +579,7 @@ document.getElementById("btnGoogleLogout").onclick = () => {
   document.getElementById("btnGoogleLogout").style.display = "none";
 };
 
-// Channel Info
+// Get Channel Info
 document.getElementById("btnGetChannelInfo").onclick = async () => {
   if (!ytAccessToken) return alert("Login first.");
   gapi.client.setToken({ access_token: ytAccessToken });
@@ -607,7 +590,7 @@ document.getElementById("btnGetChannelInfo").onclick = async () => {
   document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
 };
 
-// Analytics
+// Channel Analytics (views, subscribers, etc.)
 document.getElementById("btnGetYTAnalytics").onclick = async () => {
   if (!ytAccessToken) return alert("Login first.");
   gapi.client.setToken({ access_token: ytAccessToken });
@@ -630,20 +613,22 @@ document.getElementById("btnGetYTAnalytics").onclick = async () => {
   });
 };
 
-// Ad Video Metrics (via Analytics API)
+// Ad Video Metrics (via YouTube Analytics API)
 document.getElementById("btnGetAdVideoMetrics").onclick = async () => {
   if (!ytAccessToken) return alert("Login first.");
-  const videoId = prompt("Enter the YouTube Video ID for your ad:");
-  if (!videoId) return;
+
+  // You can prefill your ad ID here:
+  const adVideoId = prompt("Enter the YouTube Ad Video ID:", "782742447482");
+  if (!adVideoId) return;
+
   const startDate = prompt("Enter start date (YYYY-MM-DD):", "2025-01-01");
   const endDate = prompt("Enter end date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
 
-  // Use Analytics API v2 endpoint
-  const url = `https://youtubeanalytics.googleapis.com/v2/reports?`
-    + `ids=channel==MINE&startDate=${startDate}&endDate=${endDate}`
-    + `&metrics=views,estimatedMinutesWatched,averageViewDuration`
-    + `&dimensions=day`
-    + `&filters=video==${videoId}`;
+  const url = `https://youtubeanalytics.googleapis.com/v2/reports?` +
+    `ids=channel==MINE&startDate=${startDate}&endDate=${endDate}` +
+    `&metrics=views,estimatedMinutesWatched,averageViewDuration,likes,comments,shares` +
+    `&dimensions=day` +
+    `&filters=video==${adVideoId}`;
 
   const res = await fetch(url, {
     method: "GET",
@@ -652,51 +637,38 @@ document.getElementById("btnGetAdVideoMetrics").onclick = async () => {
       "Accept": "application/json"
     }
   });
+
   const data = await res.json();
+  console.log("Ad Metrics:", data);
   document.getElementById("ytMetrics").textContent = JSON.stringify(data, null, 2);
 
   if (data.rows && data.rows.length) {
     const labels = data.rows.map(r => r[0]);
-    const values = data.rows.map(r => r[1]);
+    const views = data.rows.map(r => r[1]);
     if (ytChart) ytChart.destroy();
     ytChart = new Chart(document.getElementById("ytChart"), {
       type: "line",
       data: {
         labels,
         datasets: [{
-          label: "Views",
-          data: values,
+          label: "Views per Day",
+          data: views,
           borderColor: "#ff0000",
-          fill: false
+          backgroundColor: "#ff000044",
+          fill: true
         }]
+      },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { position: "top" },
+          title: { display: true, text: "YouTube Ad Performance Over Time" }
+        }
       }
     });
+  } else {
+    alert("No ad metrics found for this video.");
   }
-};
-
-// Upload Video
-document.getElementById("uploadForm").onsubmit = async (e) => {
-  e.preventDefault();
-  if (!ytAccessToken) return alert("Login first.");
-  const file = document.getElementById("videoFile").files[0];
-  if (!file) return alert("Select a video.");
-
-  const formData = new FormData();
-  formData.append("video", file);
-  formData.append("title", document.getElementById("title").value);
-  formData.append("description", document.getElementById("description").value);
-  formData.append("privacyStatus", document.getElementById("privacy").value);
-
-  document.getElementById("ytUploadResult").textContent = "⏳ Uploading...";
-
-  const res = await fetch("https://social-ads-backend.onrender.com/upload-video", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${ytAccessToken}` },
-    body: formData,
-  });
-
-  const data = await res.json();
-  document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
 };
 // let scChart = null;
 
