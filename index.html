@@ -132,25 +132,22 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-  <h1>📊 YouTube Ads Analytics</h1>
+  <h1>📢 Google Ads – Ad Metrics Dashboard</h1>
 
   <div class="controls">
     <button id="btnGoogleLogin">Login with Google</button>
     <button id="btnGoogleLogout" style="display:none;">Logout</button>
-    <span id="ytStatus">Not logged in</span>
+    <span id="adStatus">Not logged in</span>
   </div>
 
   <hr>
 
   <div>
-    <button id="btnGetChannelInfo">Get Channel Info</button>
-    <button id="btnGetYTAnalytics">View Channel Analytics</button>
-    <button id="btnGetAdVideoMetrics">Get Ad Video Metrics</button>
-    <pre id="ytInfo"></pre>
-    <pre id="ytMetrics"></pre>
+    <button id="btnGetAdMetrics">Get Ad Metrics</button>
+    <pre id="adMetrics"></pre>
   </div>
 
-  <canvas id="ytChart" width="400" height="200"></canvas>
+  <canvas id="adChart" width="400" height="200"></canvas>
 </div>
 
 <div class="card section-color-?" id="snapchatSection">
@@ -531,36 +528,166 @@ const BACKEND_URL = "https://social-ads-backend.onrender.com";
 //     document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
 //   }
 // };
-// 
+// // 
+// const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
+// const YT_API_KEY = "AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48";
+// let ytAccessToken = null;
+// let ytTokenClient = null;
+// let ytChart = null;
+
+// // Init GAPI client
+// function gapiInit() {
+//   gapi.load("client", () => {
+//     gapi.client.setApiKey(YT_API_KEY);
+//     gapi.client.load("youtube", "v3").then(() => {
+//       console.log("YouTube Data API loaded");
+//     });
+//   });
+// }
+
+// // Setup OAuth on window load
+// window.addEventListener("load", () => {
+//   gapiInit();
+//   ytTokenClient = google.accounts.oauth2.initTokenClient({
+//     client_id: YT_GOOGLE_CLIENT_ID,
+//     scope: "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
+//     callback: (resp) => {
+//       if (resp.error) {
+//         alert("Google token error: " + resp.error);
+//         return;
+//       }
+//       ytAccessToken = resp.access_token;
+//       document.getElementById("ytStatus").textContent = "✅ Logged in (Google)";
+//       document.getElementById("btnGoogleLogin").style.display = "none";
+//       document.getElementById("btnGoogleLogout").style.display = "inline-block";
+//     },
+//   });
+// });
+
+// document.getElementById("btnGoogleLogin").onclick = () => {
+//   if (!ytTokenClient) return alert("Try again later.");
+//   ytTokenClient.requestAccessToken({ prompt: "consent" });
+// };
+
+// document.getElementById("btnGoogleLogout").onclick = () => {
+//   ytAccessToken = null;
+//   document.getElementById("ytStatus").textContent = "Logged out.";
+//   document.getElementById("btnGoogleLogin").style.display = "inline-block";
+//   document.getElementById("btnGoogleLogout").style.display = "none";
+// };
+
+// // Get Channel Info
+// document.getElementById("btnGetChannelInfo").onclick = async () => {
+//   if (!ytAccessToken) return alert("Login first.");
+//   gapi.client.setToken({ access_token: ytAccessToken });
+//   const res = await gapi.client.youtube.channels.list({
+//     mine: true,
+//     part: "snippet,statistics"
+//   });
+//   document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
+// };
+
+// // Channel Analytics (views, subscribers, etc.)
+// document.getElementById("btnGetYTAnalytics").onclick = async () => {
+//   if (!ytAccessToken) return alert("Login first.");
+//   gapi.client.setToken({ access_token: ytAccessToken });
+//   const res = await gapi.client.youtube.channels.list({
+//     mine: true,
+//     part: "statistics"
+//   });
+//   const s = res.result.items[0].statistics;
+//   if (ytChart) ytChart.destroy();
+//   ytChart = new Chart(document.getElementById("ytChart"), {
+//     type: "bar",
+//     data: {
+//       labels: Object.keys(s),
+//       datasets: [{
+//         data: Object.values(s),
+//         backgroundColor: "#ff0000"
+//       }]
+//     },
+//     options: { plugins: { legend: { display: false } } }
+//   });
+// };
+
+// // Ad Video Metrics (via YouTube Analytics API)
+// document.getElementById("btnGetAdVideoMetrics").onclick = async () => {
+//   if (!ytAccessToken) return alert("Login first.");
+
+//   // You can prefill your ad ID here:
+//   const adVideoId = prompt("Enter the YouTube Ad Video ID:", "782742447482");
+//   if (!adVideoId) return;
+
+//   const startDate = prompt("Enter start date (YYYY-MM-DD):", "2025-01-01");
+//   const endDate = prompt("Enter end date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
+
+//   const url = `https://youtubeanalytics.googleapis.com/v2/reports?` +
+//     `ids=channel==MINE&startDate=${startDate}&endDate=${endDate}` +
+//     `&metrics=views,estimatedMinutesWatched,averageViewDuration,likes,comments,shares` +
+//     `&dimensions=day` +
+//     `&filters=video==${adVideoId}`;
+
+//   const res = await fetch(url, {
+//     method: "GET",
+//     headers: {
+//       "Authorization": `Bearer ${ytAccessToken}`,
+//       "Accept": "application/json"
+//     }
+//   });
+
+//   const data = await res.json();
+//   console.log("Ad Metrics:", data);
+//   document.getElementById("ytMetrics").textContent = JSON.stringify(data, null, 2);
+
+//   if (data.rows && data.rows.length) {
+//     const labels = data.rows.map(r => r[0]);
+//     const views = data.rows.map(r => r[1]);
+//     if (ytChart) ytChart.destroy();
+//     ytChart = new Chart(document.getElementById("ytChart"), {
+//       type: "line",
+//       data: {
+//         labels,
+//         datasets: [{
+//           label: "Views per Day",
+//           data: views,
+//           borderColor: "#ff0000",
+//           backgroundColor: "#ff000044",
+//           fill: true
+//         }]
+//       },
+//       options: {
+//         responsive: true,
+//         plugins: {
+//           legend: { position: "top" },
+//           title: { display: true, text: "YouTube Ad Performance Over Time" }
+//         }
+//       }
+//     });
+//   } else {
+//     alert("No ad metrics found for this video.");
+//   }
+// };
 const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
-const YT_API_KEY = "AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48";
-let ytAccessToken = null;
-let ytTokenClient = null;
-let ytChart = null;
+let adsAccessToken = null;
+let adsTokenClient = null;
 
-// Init GAPI client
-function gapiInit() {
-  gapi.load("client", () => {
-    gapi.client.setApiKey(YT_API_KEY);
-    gapi.client.load("youtube", "v3").then(() => {
-      console.log("YouTube Data API loaded");
-    });
-  });
-}
+// Replace with your details
+const GOOGLE_ADS_DEVELOPER_TOKEN = "aDfTg_put93gcMI_8e293g";
+const CUSTOMER_ID = "2949405976"; // e.g., 7765135404
+const AD_ID = "782742447482"; // Your ad ID
 
-// Setup OAuth on window load
+// Initialize OAuth2
 window.addEventListener("load", () => {
-  gapiInit();
-  ytTokenClient = google.accounts.oauth2.initTokenClient({
+  adsTokenClient = google.accounts.oauth2.initTokenClient({
     client_id: YT_GOOGLE_CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
+    scope: "https://www.googleapis.com/auth/adwords",
     callback: (resp) => {
       if (resp.error) {
         alert("Google token error: " + resp.error);
         return;
       }
-      ytAccessToken = resp.access_token;
-      document.getElementById("ytStatus").textContent = "✅ Logged in (Google)";
+      adsAccessToken = resp.access_token;
+      document.getElementById("adStatus").textContent = "✅ Logged in (Google Ads)";
       document.getElementById("btnGoogleLogin").style.display = "none";
       document.getElementById("btnGoogleLogout").style.display = "inline-block";
     },
@@ -568,106 +695,72 @@ window.addEventListener("load", () => {
 });
 
 document.getElementById("btnGoogleLogin").onclick = () => {
-  if (!ytTokenClient) return alert("Try again later.");
-  ytTokenClient.requestAccessToken({ prompt: "consent" });
+  adsTokenClient.requestAccessToken({ prompt: "consent" });
 };
 
 document.getElementById("btnGoogleLogout").onclick = () => {
-  ytAccessToken = null;
-  document.getElementById("ytStatus").textContent = "Logged out.";
+  adsAccessToken = null;
+  document.getElementById("adStatus").textContent = "Logged out.";
   document.getElementById("btnGoogleLogin").style.display = "inline-block";
   document.getElementById("btnGoogleLogout").style.display = "none";
 };
 
-// Get Channel Info
-document.getElementById("btnGetChannelInfo").onclick = async () => {
-  if (!ytAccessToken) return alert("Login first.");
-  gapi.client.setToken({ access_token: ytAccessToken });
-  const res = await gapi.client.youtube.channels.list({
-    mine: true,
-    part: "snippet,statistics"
-  });
-  document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
-};
+// Get Ad Metrics
+document.getElementById("btnGetAdMetrics").onclick = async () => {
+  if (!adsAccessToken) return alert("Login first.");
 
-// Channel Analytics (views, subscribers, etc.)
-document.getElementById("btnGetYTAnalytics").onclick = async () => {
-  if (!ytAccessToken) return alert("Login first.");
-  gapi.client.setToken({ access_token: ytAccessToken });
-  const res = await gapi.client.youtube.channels.list({
-    mine: true,
-    part: "statistics"
-  });
-  const s = res.result.items[0].statistics;
-  if (ytChart) ytChart.destroy();
-  ytChart = new Chart(document.getElementById("ytChart"), {
-    type: "bar",
-    data: {
-      labels: Object.keys(s),
-      datasets: [{
-        data: Object.values(s),
-        backgroundColor: "#ff0000"
-      }]
-    },
-    options: { plugins: { legend: { display: false } } }
-  });
-};
+  const query = `
+    SELECT
+      ad_group_ad.ad.id,
+      ad_group_ad.ad.name,
+      metrics.impressions,
+      metrics.clicks,
+      metrics.video_views,
+      metrics.ctr,
+      metrics.average_cpc,
+      metrics.cost_micros
+    FROM ad_group_ad
+    WHERE ad_group_ad.ad.id = ${AD_ID}
+  `;
 
-// Ad Video Metrics (via YouTube Analytics API)
-document.getElementById("btnGetAdVideoMetrics").onclick = async () => {
-  if (!ytAccessToken) return alert("Login first.");
-
-  // You can prefill your ad ID here:
-  const adVideoId = prompt("Enter the YouTube Ad Video ID:", "782742447482");
-  if (!adVideoId) return;
-
-  const startDate = prompt("Enter start date (YYYY-MM-DD):", "2025-01-01");
-  const endDate = prompt("Enter end date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
-
-  const url = `https://youtubeanalytics.googleapis.com/v2/reports?` +
-    `ids=channel==MINE&startDate=${startDate}&endDate=${endDate}` +
-    `&metrics=views,estimatedMinutesWatched,averageViewDuration,likes,comments,shares` +
-    `&dimensions=day` +
-    `&filters=video==${adVideoId}`;
-
-  const res = await fetch(url, {
-    method: "GET",
-    headers: {
-      "Authorization": `Bearer ${ytAccessToken}`,
-      "Accept": "application/json"
+  const res = await fetch(
+    `https://googleads.googleapis.com/v16/customers/${CUSTOMER_ID}/googleAds:searchStream`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${adsAccessToken}`,
+        "developer-token": GOOGLE_ADS_DEVELOPER_TOKEN,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ query }),
     }
-  });
+  );
 
   const data = await res.json();
-  console.log("Ad Metrics:", data);
-  document.getElementById("ytMetrics").textContent = JSON.stringify(data, null, 2);
+  document.getElementById("adMetrics").textContent = JSON.stringify(data, null, 2);
 
-  if (data.rows && data.rows.length) {
-    const labels = data.rows.map(r => r[0]);
-    const views = data.rows.map(r => r[1]);
-    if (ytChart) ytChart.destroy();
-    ytChart = new Chart(document.getElementById("ytChart"), {
-      type: "line",
+  // Chart visualization
+  if (data.results && data.results.length) {
+    const metrics = data.results[0].metrics;
+    const labels = ["Impressions", "Clicks", "Views", "CTR"];
+    const values = [
+      metrics.impressions,
+      metrics.clicks,
+      metrics.video_views,
+      metrics.ctr
+    ];
+    if (window.adChart) adChart.destroy();
+    adChart = new Chart(document.getElementById("adChart"), {
+      type: "bar",
       data: {
         labels,
         datasets: [{
-          label: "Views per Day",
-          data: views,
-          borderColor: "#ff0000",
-          backgroundColor: "#ff000044",
-          fill: true
+          data: values,
+          backgroundColor: "#4285F4"
         }]
       },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { position: "top" },
-          title: { display: true, text: "YouTube Ad Performance Over Time" }
-        }
-      }
+      options: { plugins: { legend: { display: false } } }
     });
-  } else {
-    alert("No ad metrics found for this video.");
   }
 };
 // let scChart = null;
