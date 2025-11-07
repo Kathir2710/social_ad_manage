@@ -186,7 +186,7 @@ const GOOGLE_CLIENT_ID = '909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.goo
    --------------------------- */
 const FB_SCOPES = 'public_profile,pages_show_list,pages_manage_posts,pages_read_engagement,ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights,instagram_content_publish';
 let userAccessToken=null, pages=[], selectedPage=null, adAccounts=[], selectedAdAccount=null;
-let pageChart=null, instaChart=null, twitterChart=null,  adChart=null;
+let pageChart=null, instaChart=null, twitterChart=null;
 
 /* ---------------------------
    FACEBOOK: init + helpers
@@ -461,7 +461,7 @@ document.getElementById('btnSendWA').onclick = async () => {
 
 
 
-const BACKEND_URL = "https://social-ads-backend.onrender.com";
+// const BACKEND_URL =;
 
 /* ===========================================================
 //    🐦 TWITTER SECTION
@@ -666,103 +666,88 @@ const BACKEND_URL = "https://social-ads-backend.onrender.com";
 //   } else {
 //     alert("No ad metrics found for this video.");
 //   }
-// };
-const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
-let adsAccessToken = null;
-let adsTokenClient = null;
+// };const YT_GOOGLE_CLIENT_ID =
+        "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
+      const BACKEND_URL = " https://social-ads-backend.onrender.com"; // change to your deployed backend later
+      const AD_ID = "782742447482";
 
-// Replace with your details
-const GOOGLE_ADS_DEVELOPER_TOKEN = "aDfTg_put93gcMI_8e293g";
-const CUSTOMER_ID = "2949405976"; // e.g., 7765135404
-const AD_ID = "782742447482"; // Your ad ID
+      let adsAccessToken = null;
+      let adsTokenClient = null;
+      let adChart = null;
 
-// Initialize OAuth2
-window.addEventListener("load", () => {
-  adsTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: YT_GOOGLE_CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/adwords",
-    callback: (resp) => {
-      if (resp.error) {
-        alert("Google token error: " + resp.error);
-        return;
-      }
-      adsAccessToken = resp.access_token;
-      document.getElementById("adStatus").textContent = "✅ Logged in (Google Ads)";
-      document.getElementById("btnGoogleLogin").style.display = "none";
-      document.getElementById("btnGoogleLogout").style.display = "inline-block";
-    },
-  });
-});
+      // Initialize OAuth2
+      window.addEventListener("load", () => {
+        adsTokenClient = google.accounts.oauth2.initTokenClient({
+          client_id: YT_GOOGLE_CLIENT_ID,
+          scope: "https://www.googleapis.com/auth/adwords",
+          callback: (resp) => {
+            if (resp.error) {
+              alert("Google token error: " + resp.error);
+              return;
+            }
+            adsAccessToken = resp.access_token;
+            document.getElementById("adStatus").textContent =
+              "✅ Logged in (Google Ads)";
+            document.getElementById("btnGoogleLogin").style.display = "none";
+            document.getElementById("btnGoogleLogout").style.display = "inline-block";
+          },
+        });
+      });
 
-document.getElementById("btnGoogleLogin").onclick = () => {
-  adsTokenClient.requestAccessToken({ prompt: "consent" });
-};
+      document.getElementById("btnGoogleLogin").onclick = () => {
+        adsTokenClient.requestAccessToken({ prompt: "consent" });
+      };
 
-document.getElementById("btnGoogleLogout").onclick = () => {
-  adsAccessToken = null;
-  document.getElementById("adStatus").textContent = "Logged out.";
-  document.getElementById("btnGoogleLogin").style.display = "inline-block";
-  document.getElementById("btnGoogleLogout").style.display = "none";
-};
+      document.getElementById("btnGoogleLogout").onclick = () => {
+        adsAccessToken = null;
+        document.getElementById("adStatus").textContent = "Logged out.";
+        document.getElementById("btnGoogleLogin").style.display = "inline-block";
+        document.getElementById("btnGoogleLogout").style.display = "none";
+      };
 
-// Get Ad Metrics
-document.getElementById("btnGetAdMetrics").onclick = async () => {
-  if (!adsAccessToken) return alert("Login first.");
+      document.getElementById("btnGetAdMetrics").onclick = async () => {
+        if (!adsAccessToken) return alert("Login first.");
 
-  const query = `
-    SELECT
-      ad_group_ad.ad.id,
-      ad_group_ad.ad.name,
-      metrics.impressions,
-      metrics.clicks,
-      metrics.video_views,
-      metrics.ctr,
-      metrics.average_cpc,
-      metrics.cost_micros
-    FROM ad_group_ad
-    WHERE ad_group_ad.ad.id = ${AD_ID}
-  `;
+        document.getElementById("adMetrics").textContent = "Loading...";
 
-  const res = await fetch(
-    `https://googleads.googleapis.com/v16/customers/${CUSTOMER_ID}/googleAds:searchStream`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${adsAccessToken}`,
-        "developer-token": GOOGLE_ADS_DEVELOPER_TOKEN,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ query }),
-    }
-  );
+        const res = await fetch(`${BACKEND_URL}/api/google-ads/metrics`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ accessToken: adsAccessToken, adId: AD_ID }),
+        });
 
-  const data = await res.json();
-  document.getElementById("adMetrics").textContent = JSON.stringify(data, null, 2);
+        const data = await res.json();
+        document.getElementById("adMetrics").textContent = JSON.stringify(data, null, 2);
 
-  // Chart visualization
-  if (data.results && data.results.length) {
-    const metrics = data.results[0].metrics;
-    const labels = ["Impressions", "Clicks", "Views", "CTR"];
-    const values = [
-      metrics.impressions,
-      metrics.clicks,
-      metrics.video_views,
-      metrics.ctr
-    ];
-    if (window.adChart) adChart.destroy();
-    adChart = new Chart(document.getElementById("adChart"), {
-      type: "bar",
-      data: {
-        labels,
-        datasets: [{
-          data: values,
-          backgroundColor: "#4285F4"
-        }]
-      },
-      options: { plugins: { legend: { display: false } } }
-    });
-  }
-};
+        if (data.results && data.results.length) {
+          const metrics = data.results[0].metrics;
+          const labels = ["Impressions", "Clicks", "Views", "CTR"];
+          const values = [
+            metrics.impressions,
+            metrics.clicks,
+            metrics.video_views,
+            metrics.ctr,
+          ];
+
+          if (adChart) adChart.destroy();
+          adChart = new Chart(document.getElementById("adChart"), {
+            type: "bar",
+            data: {
+              labels,
+              datasets: [
+                {
+                  data: values,
+                  backgroundColor: "#4285F4",
+                },
+              ],
+            },
+            options: {
+              plugins: { legend: { display: false } },
+              scales: { y: { beginAtZero: true } },
+            },
+          });
+        }
+      };
 // let scChart = null;
 
 // document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
