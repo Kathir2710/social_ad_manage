@@ -95,18 +95,6 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <div class="note">Instagram features require the Facebook Page to be linked to an Instagram Business account and the app to have approved permissions.</div>
 </div>
 
-<div class="card section-color-1">
-  <h3>💬 WhatsApp Business API</h3>
-  <button id="btnGetWhatsAppInfo">Fetch WhatsApp Info</button>
-  <pre id="waInfo"></pre>
-
-  <textarea id="waMessage" placeholder="Enter message to send"></textarea>
-  <input id="waPhone" placeholder="Recipient phone in E.164 (e.g. +919876543210)" />
-  <button id="btnSendWA">Send WhatsApp Message</button>
-  <pre id="waResult"></pre>
-</div>
-
-
 <!-- TWITTER -->
 <div class="card section-color-5">
   <h3>🐦 Twitter (via backend proxy)</h3>
@@ -130,15 +118,23 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <button id="btnGetAccountMetrics">Get Account Metrics</button>
   <pre id="twitterAccountMetrics"></pre>
 </div>
-  <h2>🎯 Google Ads Dashboard</h2>
-
-    <p id="adStatus">Not logged in</p>
-    <button id="btnGoogleLogin">Login with Google</button>
-    <button id="btnGoogleLogout" style="display:none;">Logout</button>
-    <button id="btnGetAdMetrics">Get Ad Metrics</button>
-
-    <pre id="adMetrics" style="background:#f5f5f5; padding:10px;"></pre>
-    <canvas id="adChart" width="400" height="200"></canvas>
+<!-- YOUTUBE -->
+<div class="card section-color-7">
+  <h3>▶️ YouTube (Google OAuth - modern flow)</h3>
+  <button id="btnGoogleLogin">Login with Google</button>
+  <button id="btnGoogleLogout" style="display:none">Logout</button>
+  <p id="ytStatus">Not logged in.</p>
+  <button id="btnGetChannelInfo">Get Channel Info</button>
+  <pre id="ytInfo"></pre>
+  <button id="btnGetYTAnalytics">Fetch Channel Analytics</button>
+  <div class="chart-container"><canvas id="ytChart"></canvas></div>
+  <label>Upload Video (stub):</label>
+  <input id="ytVideoTitle" placeholder="Video Title">
+  <textarea id="ytVideoDesc" placeholder="Video Description"></textarea>
+  <input id="ytVideoFile" type="file" accept="video/*">
+  <button id="btnUploadVideo">Upload Video (requires backend)</button>
+  <pre id="ytUploadResult"></pre>
+  <div class="note">YouTube requires a valid OAuth token. Use the Login button and accept scopes. Make sure your Google OAuth client has your Netlify origin added as Authorized JavaScript origin.</div>
 </div>
 
 <div class="card section-color-?" id="snapchatSection">
@@ -177,7 +173,7 @@ const GOOGLE_CLIENT_ID = '909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.goo
    --------------------------- */
 const FB_SCOPES = 'public_profile,pages_show_list,pages_manage_posts,pages_read_engagement,ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights,instagram_content_publish';
 let userAccessToken=null, pages=[], selectedPage=null, adAccounts=[], selectedAdAccount=null;
-let pageChart=null, instaChart=null, twitterChart=null;
+let pageChart=null, instaChart=null, twitterChart=null, ytChart=null, adChart=null;
 
 /* ---------------------------
    FACEBOOK: init + helpers
@@ -348,111 +344,29 @@ document.getElementById('btnInstaPost').onclick = () => {
   });
 };
 
-// Instagram Account Insights (Fixed)
+// instagram insights
 document.getElementById('btnGetInstaInsights').onclick = () => {
-  if (!selectedPage) return alert('Select page first');
-
-  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, 
-    { access_token: selectedPage.access_token }, 
-    r => {
-      if (!r || !r.instagram_business_account) {
-        alert('No Instagram business account linked to this page.');
-        return;
+  if(!selectedPage) return alert('Select page first');
+  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, { access_token: selectedPage.access_token }, r => {
+    if(!r || !r.instagram_business_account) return alert('No IG linked');
+    const igId = r.instagram_business_account.id;
+    FB.api(`/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`, { access_token: selectedPage.access_token }, res => {
+      if(!res || res.error) { document.getElementById('instaInfo').textContent='Failed to fetch IG insights'; console.error(res); return; }
+      if(res.data) {
+        const labels = res.data.map(i=>i.name);
+        const values = res.data.map(i=>i.values[0].value);
+        if(instaChart) instaChart.destroy();
+        instaChart = new Chart(document.getElementById('instaChart'), { type:'bar', data:{ labels, datasets:[{ data: values, backgroundColor: '#E1306C' }] }});
+      } else {
+        document.getElementById('instaInfo').textContent = 'No IG insights returned.';
       }
-
-      const igId = r.instagram_business_account.id;
-
-      // ✅ Use only valid metrics for IG User Insights
-      // Docs: https://developers.facebook.com/docs/instagram-api/reference/ig-user/insights
-      const metrics = 'impressions,reach,profile_views';
-      const period = 'days_28'; // ✅ allowed values: day, week, days_28, month, lifetime
-
-      FB.api(
-        `/${igId}/insights?metric=${metrics}&period=${period}`,
-        { access_token: selectedPage.access_token },
-        res => {
-          if (!res || res.error) {
-            console.error('Insights error:', res);
-            document.getElementById('instaInfo').textContent = `Error: ${res.error.message}`;
-            return;
-          }
-
-          // Display chart
-          if (res.data && res.data.length > 0) {
-            const labels = res.data.map(i => i.name);
-            const values = res.data.map(i => i.values[0].value);
-
-            if (instaChart) instaChart.destroy();
-            instaChart = new Chart(document.getElementById('instaChart'), {
-              type: 'bar',
-              data: {
-                labels,
-                datasets: [
-                  {
-                    data: values,
-                    backgroundColor: '#E1306C',
-                    borderWidth: 1,
-                  },
-                ],
-              },
-              options: {
-                plugins: { legend: { display: false } },
-                scales: { y: { beginAtZero: true } },
-              },
-            });
-
-            document.getElementById('instaInfo').textContent = JSON.stringify(res.data, null, 2);
-          } else {
-            document.getElementById('instaInfo').textContent = 'No insights data returned.';
-          }
-        }
-      );
-    }
-  );
-};
-
-
-// WhatsApp Section
-document.getElementById('btnGetWhatsAppInfo').onclick = () => {
-  FB.api('/me?fields=whatsapp_business_accounts', { access_token: userAccessToken }, res => {
-    if (!res || res.error) {
-      document.getElementById('waInfo').textContent = 'Error fetching WhatsApp accounts.';
-      console.error(res);
-      return;
-    }
-    document.getElementById('waInfo').textContent = JSON.stringify(res, null, 2);
+    });
   });
 };
 
-document.getElementById('btnSendWA').onclick = async () => {
-  const msg = document.getElementById('waMessage').value;
-  const phone = document.getElementById('waPhone').value;
-  if (!msg || !phone) return alert('Enter both phone and message');
-
-  const waBusinessId = "<YOUR_WHATSAPP_BUSINESS_ID>"; // Replace with your verified ID
-  const token = userAccessToken;
-
-  const res = await fetch(`https://graph.facebook.com/v19.0/${waBusinessId}/messages`, {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      messaging_product: 'whatsapp',
-      to: phone,
-      type: 'text',
-      text: { body: msg }
-    })
-  });
-
-  const data = await res.json();
-  document.getElementById('waResult').textContent = JSON.stringify(data, null, 2);
-};
 
 
-
-// const BACKEND_URL =;
+const BACKEND_URL = "https://social-ads-backend.onrender.com";
 
 /* ===========================================================
 //    🐦 TWITTER SECTION
@@ -519,268 +433,139 @@ document.getElementById('btnSendWA').onclick = async () => {
 //     document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
 //   }
 // };
-// // 
-// const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
-// const YT_API_KEY = "AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48";
-// let ytAccessToken = null;
-// let ytTokenClient = null;
-// let ytChart = null;
 
-// // Init GAPI client
-// function gapiInit() {
-//   gapi.load("client", () => {
-//     gapi.client.setApiKey(YT_API_KEY);
-//     gapi.client.load("youtube", "v3").then(() => {
-//       console.log("YouTube Data API loaded");
-//     });
-//   });
-// }
+/* ---------------------------
+   YOUTUBE: modern OAuth flow using google.accounts.oauth2.initTokenClient + gapi.client
+   --------------------------- */
+let ytAccessToken = null;
+let ytTokenClient = null;
 
-// // Setup OAuth on window load
-// window.addEventListener("load", () => {
-//   gapiInit();
-//   ytTokenClient = google.accounts.oauth2.initTokenClient({
-//     client_id: YT_GOOGLE_CLIENT_ID,
-//     scope: "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
-//     callback: (resp) => {
-//       if (resp.error) {
-//         alert("Google token error: " + resp.error);
-//         return;
-//       }
-//       ytAccessToken = resp.access_token;
-//       document.getElementById("ytStatus").textContent = "✅ Logged in (Google)";
-//       document.getElementById("btnGoogleLogin").style.display = "none";
-//       document.getElementById("btnGoogleLogout").style.display = "inline-block";
-//     },
-//   });
-// });
+// initialize gapi client for the youtube discovery doc
+function gapiInit() {
+  gapi.load('client', async () => {
+    try {
+      await gapi.client.init({ discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'] });
+    } catch(e){ console.warn('gapi.client.init failed', e); }
+  });
+}
 
-// document.getElementById("btnGoogleLogin").onclick = () => {
-//   if (!ytTokenClient) return alert("Try again later.");
-//   ytTokenClient.requestAccessToken({ prompt: "consent" });
-// };
+// Setup the token client on window load
+window.addEventListener('load', ()=> {
+  gapiInit();
+  ytTokenClient = google.accounts.oauth2.initTokenClient({
+    client_id: GOOGLE_CLIENT_ID,
+    scope: 'https://www.googleapis.com/auth/youtube.readonly',
+    callback: (resp) => {
+      if(resp.error) {
+        console.error('Token client error', resp);
+        alert('Google token error: ' + (resp.error || 'unknown'));
+        return;
+      }
+      ytAccessToken = resp.access_token;
+      document.getElementById('ytStatus').textContent = '✅ Logged in (Google)';
+      document.getElementById('btnGoogleLogin').style.display = 'none';
+      document.getElementById('btnGoogleLogout').style.display = 'inline-block';
+    }
+  });
+});
 
-// document.getElementById("btnGoogleLogout").onclick = () => {
-//   ytAccessToken = null;
-//   document.getElementById("ytStatus").textContent = "Logged out.";
-//   document.getElementById("btnGoogleLogin").style.display = "inline-block";
-//   document.getElementById("btnGoogleLogout").style.display = "none";
-// };
+// Login
+document.getElementById('btnGoogleLogin').onclick = () => {
+  if(!ytTokenClient) return alert('Google client not initialized yet. Try again in a moment.');
+  ytTokenClient.requestAccessToken({ prompt: 'consent' }); // uses popup flow
+};
 
-// // Get Channel Info
-// document.getElementById("btnGetChannelInfo").onclick = async () => {
-//   if (!ytAccessToken) return alert("Login first.");
-//   gapi.client.setToken({ access_token: ytAccessToken });
-//   const res = await gapi.client.youtube.channels.list({
-//     mine: true,
-//     part: "snippet,statistics"
-//   });
-//   document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
-// };
+// Logout
+document.getElementById('btnGoogleLogout').onclick = () => {
+  ytAccessToken = null;
+  document.getElementById('ytStatus').textContent = 'Logged out.';
+  document.getElementById('btnGoogleLogin').style.display = 'inline-block';
+  document.getElementById('btnGoogleLogout').style.display = 'none';
+};
 
-// // Channel Analytics (views, subscribers, etc.)
-// document.getElementById("btnGetYTAnalytics").onclick = async () => {
-//   if (!ytAccessToken) return alert("Login first.");
-//   gapi.client.setToken({ access_token: ytAccessToken });
-//   const res = await gapi.client.youtube.channels.list({
-//     mine: true,
-//     part: "statistics"
-//   });
-//   const s = res.result.items[0].statistics;
-//   if (ytChart) ytChart.destroy();
-//   ytChart = new Chart(document.getElementById("ytChart"), {
-//     type: "bar",
-//     data: {
-//       labels: Object.keys(s),
-//       datasets: [{
-//         data: Object.values(s),
-//         backgroundColor: "#ff0000"
-//       }]
-//     },
-//     options: { plugins: { legend: { display: false } } }
-//   });
-// };
+// Get channel info (requires user to be logged in)
+document.getElementById('btnGetChannelInfo').onclick = async () => {
+  if(!ytAccessToken) return alert('Login with Google first.');
+  try {
+    gapi.client.setToken({ access_token: ytAccessToken });
+    const res = await gapi.client.youtube.channels.list({ mine: true, part: 'snippet,statistics' });
+    document.getElementById('ytInfo').textContent = JSON.stringify(res.result, null, 2);
+  } catch(e) {
+    console.error('YouTube channels.list error', e);
+    document.getElementById('ytInfo').textContent = 'YouTube request failed. See console.';
+  }
+};
 
-// // Ad Video Metrics (via YouTube Analytics API)
-// document.getElementById("btnGetAdVideoMetrics").onclick = async () => {
-//   if (!ytAccessToken) return alert("Login first.");
-
-//   // You can prefill your ad ID here:
-//   const adVideoId = prompt("Enter the YouTube Ad Video ID:", "782742447482");
-//   if (!adVideoId) return;
-
-//   const startDate = prompt("Enter start date (YYYY-MM-DD):", "2025-01-01");
-//   const endDate = prompt("Enter end date (YYYY-MM-DD):", new Date().toISOString().split('T')[0]);
-
-//   const url = `https://youtubeanalytics.googleapis.com/v2/reports?` +
-//     `ids=channel==MINE&startDate=${startDate}&endDate=${endDate}` +
-//     `&metrics=views,estimatedMinutesWatched,averageViewDuration,likes,comments,shares` +
-//     `&dimensions=day` +
-//     `&filters=video==${adVideoId}`;
-
-//   const res = await fetch(url, {
-//     method: "GET",
-//     headers: {
-//       "Authorization": `Bearer ${ytAccessToken}`,
-//       "Accept": "application/json"
-//     }
-//   });
-
-//   const data = await res.json();
-//   console.log("Ad Metrics:", data);
-//   document.getElementById("ytMetrics").textContent = JSON.stringify(data, null, 2);
-
-//   if (data.rows && data.rows.length) {
-//     const labels = data.rows.map(r => r[0]);
-//     const views = data.rows.map(r => r[1]);
-//     if (ytChart) ytChart.destroy();
-//     ytChart = new Chart(document.getElementById("ytChart"), {
-//       type: "line",
-//       data: {
-//         labels,
-//         datasets: [{
-//           label: "Views per Day",
-//           data: views,
-//           borderColor: "#ff0000",
-//           backgroundColor: "#ff000044",
-//           fill: true
-//         }]
-//       },
-//       options: {
-//         responsive: true,
-//         plugins: {
-//           legend: { position: "top" },
-//           title: { display: true, text: "YouTube Ad Performance Over Time" }
-//         }
-//       }
-//     });
-//   } else {
-//     alert("No ad metrics found for this video.");
-//   }
-// };const YT_GOOGLE_CLIENT_ID =
-        "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
-      const BACKEND_URL = " https://social-ads-backend.onrender.com"; // change to your deployed backend later
-      const AD_ID = "782742447482";
-
-      let adsAccessToken = null;
-      let adsTokenClient = null;
-      let adChart = null;
-
-      // Initialize OAuth2
-      window.addEventListener("load", () => {
-        adsTokenClient = google.accounts.oauth2.initTokenClient({
-          client_id: YT_GOOGLE_CLIENT_ID,
-          scope: "https://www.googleapis.com/auth/adwords",
-          callback: (resp) => {
-            if (resp.error) {
-              alert("Google token error: " + resp.error);
-              return;
-            }
-            adsAccessToken = resp.access_token;
-            document.getElementById("adStatus").textContent =
-              "✅ Logged in (Google Ads)";
-            document.getElementById("btnGoogleLogin").style.display = "none";
-            document.getElementById("btnGoogleLogout").style.display = "inline-block";
-          },
-        });
+// Get basic analytics (statistics) and draw chart
+document.getElementById('btnGetYTAnalytics').onclick = async () => {
+  if(!ytAccessToken) return alert('Login with Google first.');
+  try {
+    gapi.client.setToken({ access_token: ytAccessToken });
+    const res = await gapi.client.youtube.channels.list({ mine:true, part:'statistics' });
+    if(res.result && res.result.items && res.result.items.length) {
+      const s = res.result.items[0].statistics;
+      if(ytChart) ytChart.destroy();
+      ytChart = new Chart(document.getElementById('ytChart'), {
+        type:'bar',
+        data: { labels: Object.keys(s), datasets: [{ data: Object.values(s), backgroundColor:'#FF0000' }] },
+        options: { plugins: { legend: { display:false } } }
       });
+    } else {
+      document.getElementById('ytInfo').textContent = 'No channel data returned.';
+    }
+  } catch(e) {
+    console.error('YT analytics error', e);
+    document.getElementById('ytInfo').textContent = 'Failed to get analytics. See console.';
+  }
+};
 
-      document.getElementById("btnGoogleLogin").onclick = () => {
-        adsTokenClient.requestAccessToken({ prompt: "consent" });
-      };
+// Upload stub
+document.getElementById('btnUploadVideo').onclick = () => {
+  document.getElementById('ytUploadResult').textContent = 'Uploading requires resumable upload and backend support; see docs.';
+};
 
-      document.getElementById("btnGoogleLogout").onclick = () => {
-        adsAccessToken = null;
-        document.getElementById("adStatus").textContent = "Logged out.";
-        document.getElementById("btnGoogleLogin").style.display = "inline-block";
-        document.getElementById("btnGoogleLogout").style.display = "none";
-      };
+let scChart = null;
 
-      document.getElementById("btnGetAdMetrics").onclick = async () => {
-        if (!adsAccessToken) return alert("Login first.");
+document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
+  const accountId = document.getElementById('scAccountId').value.trim();
+  const campaignId = document.getElementById('scCampaignId').value.trim();
+  const start = document.getElementById('scStart').value.trim();
+  const end = document.getElementById('scEnd').value.trim();
+  const breakdowns = document.getElementById('scBreakdowns').value.trim();
 
-        document.getElementById("adMetrics").textContent = "Loading...";
+  if (!accountId || !campaignId || !start || !end) return alert('Enter all fields');
 
-        const res = await fetch(`${BACKEND_URL}/api/google-ads/metrics`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ accessToken: adsAccessToken, adId: AD_ID }),
-        });
+  const url = `/api/snapchat/metrics?accountId=${accountId}&campaignId=${campaignId}&startTime=${start}&endTime=${end}&breakdowns=${encodeURIComponent(breakdowns)}`;
 
-        const data = await res.json();
-        document.getElementById("adMetrics").textContent = JSON.stringify(data, null, 2);
+  try {
+    const res = await fetch(url);
+    const json = await res.json();
+    document.getElementById('scResult').textContent = JSON.stringify(json, null, 2);
 
-        if (data.results && data.results.length) {
-          const metrics = data.results[0].metrics;
-          const labels = ["Impressions", "Clicks", "Views", "CTR"];
-          const values = [
-            metrics.impressions,
-            metrics.clicks,
-            metrics.video_views,
-            metrics.ctr,
-          ];
-
-          if (adChart) adChart.destroy();
-          adChart = new Chart(document.getElementById("adChart"), {
-            type: "bar",
-            data: {
-              labels,
-              datasets: [
-                {
-                  data: values,
-                  backgroundColor: "#4285F4",
-                },
-              ],
-            },
-            options: {
-              plugins: { legend: { display: false } },
-              scales: { y: { beginAtZero: true } },
-            },
-          });
+    if (json.success && json.data && json.data.timeseries_stats) {
+      const series = json.data.timeseries_stats[0].timeseries;
+      const labels = series.map(x => x.start_time.split('T')[0]);
+      const impressions = series.map(x => x.stats.impressions || 0);
+      const swipes = series.map(x => x.stats.swipes || 0);
+      // you can add more metrics here
+      if (scChart) scChart.destroy();
+      scChart = new Chart(document.getElementById('scChart'), {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            { label: 'Impressions', data: impressions, borderColor: '#FFFC00', fill:false },
+            { label: 'Swipes', data: swipes, borderColor: '#FF9F1C', fill:false }
+          ]
         }
-      };
-// let scChart = null;
+      });
+    }
 
-// document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
-//   const accountId = document.getElementById('scAccountId').value.trim();
-//   const campaignId = document.getElementById('scCampaignId').value.trim();
-//   const start = document.getElementById('scStart').value.trim();
-//   const end = document.getElementById('scEnd').value.trim();
-//   const breakdowns = document.getElementById('scBreakdowns').value.trim();
-
-//   if (!accountId || !campaignId || !start || !end) return alert('Enter all fields');
-
-//   const url = `/api/snapchat/metrics?accountId=${accountId}&campaignId=${campaignId}&startTime=${start}&endTime=${end}&breakdowns=${encodeURIComponent(breakdowns)}`;
-
-//   try {
-//     const res = await fetch(url);
-//     const json = await res.json();
-//     document.getElementById('scResult').textContent = JSON.stringify(json, null, 2);
-
-//     if (json.success && json.data && json.data.timeseries_stats) {
-//       const series = json.data.timeseries_stats[0].timeseries;
-//       const labels = series.map(x => x.start_time.split('T')[0]);
-//       const impressions = series.map(x => x.stats.impressions || 0);
-//       const swipes = series.map(x => x.stats.swipes || 0);
-//       // you can add more metrics here
-//       if (scChart) scChart.destroy();
-//       scChart = new Chart(document.getElementById('scChart'), {
-//         type: 'line',
-//         data: {
-//           labels,
-//           datasets: [
-//             { label: 'Impressions', data: impressions, borderColor: '#FFFC00', fill:false },
-//             { label: 'Swipes', data: swipes, borderColor: '#FF9F1C', fill:false }
-//           ]
-//         }
-//       });
-//     }
-
-//   } catch (err) {
-//     console.error(err);
-//     document.getElementById('scResult').textContent = 'Error fetching Snapchat metrics';
-//   }
-// };
+  } catch (err) {
+    console.error(err);
+    document.getElementById('scResult').textContent = 'Error fetching Snapchat metrics';
+  }
+};
 
 /* ---------------------------
    Helpful UI tips on first load
