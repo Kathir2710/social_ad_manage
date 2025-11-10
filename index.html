@@ -386,6 +386,8 @@ document.getElementById('btnGetInstaInsights').onclick = () => {
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
 
 const CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
+const customerId = "5368806709";
+
 let ytAccessToken = null, ytTokenClient = null;
 
 // Init GAPI client
@@ -440,8 +442,8 @@ document.getElementById("btnFetchMetrics").onclick = async () => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      developerToken: "aDfTg_put93gcMI_8e293g",
-      customerId: "5368806709",
+      // developerToken: "aDfTg_put93gcMI_8e293g",
+      // customerId: "5368806709",
       accessToken: ytAccessToken
     })
   });
