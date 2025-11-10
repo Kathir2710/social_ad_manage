@@ -317,75 +317,82 @@ document.getElementById('btnInstaPost').onclick = () => {
 };
 
 // instagram insights
-// instagram insights
+/* ---------------------------
+   FIXED: Instagram Insights (direct using IG ID)
+   --------------------------- */
 document.getElementById('btnGetInstaInsights').onclick = () => {
-  if (!selectedPage) return alert('Select page first');
+  // ✅ Use your known Instagram Business Account ID
+  const igId = '17841409225413339';
 
-  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, 
-    { access_token: selectedPage.access_token }, 
-    r => {
-      if (!r || !r.instagram_business_account) return alert('No IG linked');
-      const igId = r.instagram_business_account.id;
+  // If you have selectedPage, use its access token; otherwise use userAccessToken
+  const token = selectedPage ? selectedPage.access_token : userAccessToken;
+  if (!token) return alert('Login and select a page first.');
 
-      FB.api(
-        `/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`, 
-        { access_token: selectedPage.access_token }, 
-        res => {
-          if (!res || res.error) {
-            document.getElementById('instaInfo').textContent = '❌ Failed to fetch Instagram insights';
-            console.error(res);
-            return;
-          }
+  // Fetch insights
+  FB.api(
+    `/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`,
+    { access_token: token },
+    (res) => {
+      console.log("📊 Instagram Insights Response:", res);
 
-          if (res.data && res.data.length) {
-            // Build metrics summary
-            let summaryHTML = '<h3>📊 Instagram Insights (Last 7 Days)</h3><ul>';
-            res.data.forEach(metric => {
-              const name = metric.title || metric.name;
-              const value = metric.values[0]?.value || 0;
-              summaryHTML += `<li><strong>${name}:</strong> ${value}</li>`;
-            });
-            summaryHTML += '</ul>';
-            document.getElementById('instaInfo').innerHTML = summaryHTML;
+      if (!res || res.error) {
+        document.getElementById('instaInfo').textContent = '❌ Failed to fetch Instagram insights';
+        console.error('IG Insights error', res);
+        return;
+      }
 
-            // Chart visualization
-            const labels = res.data.map(i => i.name.toUpperCase());
-            const values = res.data.map(i => i.values[0].value);
-            
-            // assign color per metric
-            const colors = ['#E1306C', '#FCAF45', '#833AB4'];
+      if (res.data && res.data.length) {
+        // 📋 Display metrics summary
+        let summaryHTML = '<h3>📈 Instagram Insights (Last 7 Days)</h3><ul>';
+        res.data.forEach((metric) => {
+          const name = metric.title || metric.name;
+          const value = metric.values[0]?.value || 0;
+          summaryHTML += `<li><strong>${name}:</strong> ${value}</li>`;
+        });
+        summaryHTML += '</ul>';
+        document.getElementById('instaInfo').innerHTML = summaryHTML;
 
-            if (instaChart) instaChart.destroy();
-            instaChart = new Chart(document.getElementById('instaChart'), {
-              type: 'bar',
-              data: {
-                labels,
-                datasets: [{
-                  label: 'Instagram Metrics',
-                  data: values,
-                  backgroundColor: colors,
-                  borderRadius: 10
-                }]
+        // 🎨 Chart visualization
+        const labels = res.data.map((i) => i.name.toUpperCase());
+        const values = res.data.map((i) => i.values[0].value);
+        const colors = ['#E1306C', '#FCAF45', '#833AB4'];
+
+        if (instaChart) instaChart.destroy();
+        instaChart = new Chart(document.getElementById('instaChart'), {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [
+              {
+                label: 'Instagram Metrics',
+                data: values,
+                backgroundColor: colors,
+                borderRadius: 10,
               },
-              options: {
-                plugins: {
-                  legend: { display: false },
-                  title: { display: true, text: 'Instagram Performance (Last 7 Days)', color: '#E1306C' }
-                },
-                scales: {
-                  y: { beginAtZero: true, ticks: { color: '#333' } },
-                  x: { ticks: { color: '#333' } }
-                }
-              }
-            });
-          } else {
-            document.getElementById('instaInfo').textContent = 'No Instagram insights returned.';
-          }
-        }
-      );
+            ],
+          },
+          options: {
+            plugins: {
+              legend: { display: false },
+              title: {
+                display: true,
+                text: 'Instagram Performance (Last 7 Days)',
+                color: '#E1306C',
+              },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { color: '#333' } },
+              x: { ticks: { color: '#333' } },
+            },
+          },
+        });
+      } else {
+        document.getElementById('instaInfo').textContent = 'No Instagram insights returned.';
+      }
     }
   );
 };
+
 
 
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
