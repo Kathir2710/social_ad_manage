@@ -94,30 +94,6 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <div class="chart-container"><canvas id="instaChart"></canvas></div>
   <div class="note">Instagram features require the Facebook Page to be linked to an Instagram Business account and the app to have approved permissions.</div>
 </div>
-
-<!-- TWITTER -->
-<div class="card section-color-5">
-  <h3>🐦 Twitter (via backend proxy)</h3>
-  <div class="note">
-    Backend proxy: <b>https://social-ads-backend.onrender.com</b><br>
-    Use this to safely post tweets and fetch analytics.
-  </div>
-
-  <input id="twitterUsername" placeholder="Enter username (e.g. Kathirludus2710)" />
-  <button id="btnGetTwitterProfile">Get Profile Info</button>
-  <pre id="twitterProfile"></pre>
-
-  <textarea id="tweetContent" placeholder="Write your tweet...">🚀 Hello world from my Social Ads Dashboard!</textarea>
-  <button id="btnPostTweet">Post Tweet / Ad</button>
-  <pre id="tweetResult"></pre>
-
-  <input id="tweetIdInput" placeholder="Enter Tweet ID for metrics" />
-  <button id="btnGetTweetMetrics">Get Tweet Metrics</button>
-  <div class="chart-container"><canvas id="twitterChart"></canvas></div>
-
-  <button id="btnGetAccountMetrics">Get Account Metrics</button>
-  <pre id="twitterAccountMetrics"></pre>
-</div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
    <h1>📊 YouTube Ads Upload & Analytics</h1>
@@ -155,17 +131,6 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   <canvas id="ytChart" width="400" height="200"></canvas>
 </div>
 
-<div class="card section-color-?" id="snapchatSection">
-  <h3>👻 Snapchat Campaign Metrics</h3>
-  <input id="scAccountId" placeholder="Ad Account ID">
-  <input id="scCampaignId" placeholder="Campaign ID">
-  <input id="scStart" placeholder="Start Date (YYYY-MM-DD)">
-  <input id="scEnd" placeholder="End Date (YYYY-MM-DD)">
-  <input id="scBreakdowns" placeholder="Breakdowns (comma, e.g., age_range,region)">
-  <button id="btnGetSnapchatMetrics">Fetch Snapchat Metrics</button>
-  <pre id="scResult"></pre>
-  <div class="chart-container"><canvas id="scChart"></canvas></div>
-</div>
 
 
 </div>
@@ -174,21 +139,10 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 <script src="https://connect.facebook.net/en_US/sdk.js"></script>
 
 <script>
-/* ---------------------------
-   Configuration - REPLACE
-   ---------------------------
-   Put your real values here before deploying.
-   - FB_APP_ID: facebook app id (web)
-   - GOOGLE_CLIENT_ID: google web oauth client id
-   NOTE: For Twitter, do NOT put bearer token in frontend in production.
-*/
-
 const FB_APP_ID = '2766175383577129'; // <-- replace with your FB App ID
 const GOOGLE_CLIENT_ID = '909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com'; // <-- replace with your Google Web client ID
 
-/* ---------------------------
-   Globals
-   --------------------------- */
+
 const FB_SCOPES = 'public_profile,pages_show_list,pages_manage_posts,pages_read_engagement,ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights,instagram_content_publish';
 let userAccessToken=null, pages=[], selectedPage=null, adAccounts=[], selectedAdAccount=null;
 let pageChart=null, instaChart=null, twitterChart=null, ytChart=null, adChart=null;
@@ -363,94 +317,79 @@ document.getElementById('btnInstaPost').onclick = () => {
 };
 
 // instagram insights
+// instagram insights
 document.getElementById('btnGetInstaInsights').onclick = () => {
-  if(!selectedPage) return alert('Select page first');
-  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, { access_token: selectedPage.access_token }, r => {
-    if(!r || !r.instagram_business_account) return alert('No IG linked');
-    const igId = r.instagram_business_account.id;
-    FB.api(`/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`, { access_token: selectedPage.access_token }, res => {
-      if(!res || res.error) { document.getElementById('instaInfo').textContent='Failed to fetch IG insights'; console.error(res); return; }
-      if(res.data) {
-        const labels = res.data.map(i=>i.name);
-        const values = res.data.map(i=>i.values[0].value);
-        if(instaChart) instaChart.destroy();
-        instaChart = new Chart(document.getElementById('instaChart'), { type:'bar', data:{ labels, datasets:[{ data: values, backgroundColor: '#E1306C' }] }});
-      } else {
-        document.getElementById('instaInfo').textContent = 'No IG insights returned.';
-      }
-    });
-  });
-};
+  if (!selectedPage) return alert('Select page first');
 
+  FB.api(`/${selectedPage.id}?fields=instagram_business_account`, 
+    { access_token: selectedPage.access_token }, 
+    r => {
+      if (!r || !r.instagram_business_account) return alert('No IG linked');
+      const igId = r.instagram_business_account.id;
+
+      FB.api(
+        `/${igId}/insights?metric=impressions,reach,profile_views&period=days_7`, 
+        { access_token: selectedPage.access_token }, 
+        res => {
+          if (!res || res.error) {
+            document.getElementById('instaInfo').textContent = '❌ Failed to fetch Instagram insights';
+            console.error(res);
+            return;
+          }
+
+          if (res.data && res.data.length) {
+            // Build metrics summary
+            let summaryHTML = '<h3>📊 Instagram Insights (Last 7 Days)</h3><ul>';
+            res.data.forEach(metric => {
+              const name = metric.title || metric.name;
+              const value = metric.values[0]?.value || 0;
+              summaryHTML += `<li><strong>${name}:</strong> ${value}</li>`;
+            });
+            summaryHTML += '</ul>';
+            document.getElementById('instaInfo').innerHTML = summaryHTML;
+
+            // Chart visualization
+            const labels = res.data.map(i => i.name.toUpperCase());
+            const values = res.data.map(i => i.values[0].value);
+            
+            // assign color per metric
+            const colors = ['#E1306C', '#FCAF45', '#833AB4'];
+
+            if (instaChart) instaChart.destroy();
+            instaChart = new Chart(document.getElementById('instaChart'), {
+              type: 'bar',
+              data: {
+                labels,
+                datasets: [{
+                  label: 'Instagram Metrics',
+                  data: values,
+                  backgroundColor: colors,
+                  borderRadius: 10
+                }]
+              },
+              options: {
+                plugins: {
+                  legend: { display: false },
+                  title: { display: true, text: 'Instagram Performance (Last 7 Days)', color: '#E1306C' }
+                },
+                scales: {
+                  y: { beginAtZero: true, ticks: { color: '#333' } },
+                  x: { ticks: { color: '#333' } }
+                }
+              }
+            });
+          } else {
+            document.getElementById('instaInfo').textContent = 'No Instagram insights returned.';
+          }
+        }
+      );
+    }
+  );
+};
 
 
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
 
-/* ===========================================================
-//    🐦 TWITTER SECTION
-// =========================================================== */
-// async function callTwitterViaProxy(endpoint, method = 'GET', body = null) {
-//   const url = `${BACKEND_URL}/twitter/${endpoint}`;
-//   const options = { method, headers: { 'Content-Type': 'application/json' } };
-//   if (body) options.body = JSON.stringify(body);
-//   const res = await fetch(url, options);
-//   return await res.json();
-// }
-
-// // Get Twitter Profile
-// document.getElementById('btnGetTwitterProfile').onclick = async () => {
-//   const username = document.getElementById('twitterUsername').value.trim();
-//   if (!username) return alert('Enter username');
-
-//   try {
-//     const data = await callTwitterViaProxy(
-//       `users/by/username/${username}?user.fields=public_metrics,profile_image_url`
-//     );
-//     document.getElementById('twitterProfile').textContent = JSON.stringify(data, null, 2);
-//   } catch (err) {
-//     console.error(err);
-//     document.getElementById('twitterProfile').textContent = 'Error fetching Twitter profile.';
-//   }
-// };
-
-// // Post Tweet
-// document.getElementById('btnPostTweet').onclick = async () => {
-//   const text = document.getElementById('tweetContent').value.trim();
-//   if (!text) return alert('Enter tweet text');
-//   try {
-//     const result = await callTwitterViaProxy(`tweets`, 'POST', { text });
-//     document.getElementById('tweetResult').textContent = JSON.stringify(result, null, 2);
-//   } catch (err) {
-//     console.error(err);
-//     document.getElementById('tweetResult').textContent = 'Error posting tweet.';
-//   }
-// };
-
-// // Get Tweet Metrics
-// document.getElementById('btnGetTweetMetrics').onclick = async () => {
-//   const id = document.getElementById('tweetIdInput').value.trim();
-//   if (!id) return alert('Enter Tweet ID');
-//   try {
-//     const data = await callTwitterViaProxy(`tweets/${id}?tweet.fields=public_metrics`);
-//     document.getElementById('tweetResult').textContent = JSON.stringify(data, null, 2);
-//     if (data?.data?.public_metrics) {
-//       const m = data.data.public_metrics;
-//       if (twitterChart) twitterChart.destroy();
-//       twitterChart = new Chart(document.getElementById('twitterChart'), {
-//         type: 'bar',
-//         data: {
-//           labels: Object.keys(m),
-//           datasets: [
-//             { data: Object.values(m), backgroundColor: '#1DA1F2' }
-//           ]
-//         }
-//       });
-//     }
-//   } catch (err) {
-//     console.error(err);
-//     document.getElementById('tweetResult').textContent = 'Error fetching metrics.';
-//   }
-// };
 const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
 let ytAccessToken = null, ytTokenClient = null;
 
@@ -540,52 +479,6 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
   document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
 };
 
-let scChart = null;
-
-document.getElementById('btnGetSnapchatMetrics').onclick = async () => {
-  const accountId = document.getElementById('scAccountId').value.trim();
-  const campaignId = document.getElementById('scCampaignId').value.trim();
-  const start = document.getElementById('scStart').value.trim();
-  const end = document.getElementById('scEnd').value.trim();
-  const breakdowns = document.getElementById('scBreakdowns').value.trim();
-
-  if (!accountId || !campaignId || !start || !end) return alert('Enter all fields');
-
-  const url = `/api/snapchat/metrics?accountId=${accountId}&campaignId=${campaignId}&startTime=${start}&endTime=${end}&breakdowns=${encodeURIComponent(breakdowns)}`;
-
-  try {
-    const res = await fetch(url);
-    const json = await res.json();
-    document.getElementById('scResult').textContent = JSON.stringify(json, null, 2);
-
-    if (json.success && json.data && json.data.timeseries_stats) {
-      const series = json.data.timeseries_stats[0].timeseries;
-      const labels = series.map(x => x.start_time.split('T')[0]);
-      const impressions = series.map(x => x.stats.impressions || 0);
-      const swipes = series.map(x => x.stats.swipes || 0);
-      // you can add more metrics here
-      if (scChart) scChart.destroy();
-      scChart = new Chart(document.getElementById('scChart'), {
-        type: 'line',
-        data: {
-          labels,
-          datasets: [
-            { label: 'Impressions', data: impressions, borderColor: '#FFFC00', fill:false },
-            { label: 'Swipes', data: swipes, borderColor: '#FF9F1C', fill:false }
-          ]
-        }
-      });
-    }
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById('scResult').textContent = 'Error fetching Snapchat metrics';
-  }
-};
-
-/* ---------------------------
-   Helpful UI tips on first load
-   --------------------------- */
 (function setDefaults(){
   document.getElementById('twitterUsername').value = 'Kathirludus2710';
 })();
