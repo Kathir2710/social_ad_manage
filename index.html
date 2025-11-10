@@ -96,20 +96,12 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 </div>
 <!-- YOUTUBE -->
 <div class="card section-color-7">
-   <h1>📊 YouTube Ads Upload & Analytics</h1>
+  <h1>📊 YouTube Ads Upload & Analytics</h1>
 
   <div class="controls">
     <button id="btnGoogleLogin">Login with Google</button>
     <button id="btnGoogleLogout" style="display:none;">Logout</button>
     <span id="ytStatus">Not logged in</span>
-  </div>
-
-  <hr>
-
-  <div>
-    <button id="btnGetChannelInfo">Get Channel Info</button>
-    <button id="btnGetYTAnalytics">View Analytics</button>
-    <pre id="ytInfo"></pre>
   </div>
 
   <hr>
@@ -128,9 +120,18 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
   </form>
   <pre id="ytUploadResult"></pre>
 
+  <hr>
+
+  <h3>📈 Ad Campaign Metrics</h3>
+  <button id="btnFetchMetrics">Fetch Metrics</button>
+  <pre id="metricsResult"></pre>
+
   <canvas id="ytChart" width="400" height="200"></canvas>
 </div>
 
+<script src="https://apis.google.com/js/api.js"></script>
+<script src="https://accounts.google.com/gsi/client"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 
 </div>
@@ -384,86 +385,46 @@ document.getElementById('btnGetInstaInsights').onclick = () => {
 
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
 
-const YT_GOOGLE_CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
+const CLIENT_ID = "909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com";
 let ytAccessToken = null, ytTokenClient = null;
 
 // Init GAPI client
 function gapiInit() {
   gapi.load("client", () => {
-    gapi.client.setApiKey("AIzaSyDRV6_ZEnQMdcMIhbhDYJP9OSayla3AV48");
+    gapi.client.setApiKey("YOUR_YOUTUBE_API_KEY");
     gapi.client.load("youtube", "v3");
   });
 }
 
-// Setup OAuth on window load
 window.addEventListener("load", () => {
   gapiInit();
   ytTokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: YT_GOOGLE_CLIENT_ID,
-    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+    client_id: CLIENT_ID,
+    scope: "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/adwords",
     callback: (resp) => {
-      if (resp.error) {
-        alert("Google token error: " + resp.error);
-        return;
-      }
       ytAccessToken = resp.access_token;
-      document.getElementById("ytStatus").textContent = "✅ Logged in (Google)";
+      document.getElementById("ytStatus").textContent = "✅ Logged in";
       document.getElementById("btnGoogleLogin").style.display = "none";
       document.getElementById("btnGoogleLogout").style.display = "inline-block";
     },
   });
 });
 
-document.getElementById("btnGoogleLogin").onclick = () => {
-  if (!ytTokenClient) return alert("Try again later.");
-  ytTokenClient.requestAccessToken({ prompt: "consent" });
-};
+document.getElementById("btnGoogleLogin").onclick = () => ytTokenClient.requestAccessToken({ prompt: "consent" });
+document.getElementById("btnGoogleLogout").onclick = () => location.reload();
 
-document.getElementById("btnGoogleLogout").onclick = () => {
-  ytAccessToken = null;
-  document.getElementById("ytStatus").textContent = "Logged out.";
-  document.getElementById("btnGoogleLogin").style.display = "inline-block";
-  document.getElementById("btnGoogleLogout").style.display = "none";
-};
-
-// Channel Info
-document.getElementById("btnGetChannelInfo").onclick = async () => {
-  if (!ytAccessToken) return alert("Login first.");
-  gapi.client.setToken({ access_token: ytAccessToken });
-  const res = await gapi.client.youtube.channels.list({ mine: true, part: "snippet,statistics" });
-  document.getElementById("ytInfo").textContent = JSON.stringify(res.result, null, 2);
-};
-
-// Analytics
-document.getElementById("btnGetYTAnalytics").onclick = async () => {
-  if (!ytAccessToken) return alert("Login first.");
-  gapi.client.setToken({ access_token: ytAccessToken });
-  const res = await gapi.client.youtube.channels.list({ mine: true, part: "statistics" });
-  const s = res.result.items[0].statistics;
-  if (ytChart) ytChart.destroy();
-  ytChart = new Chart(document.getElementById("ytChart"), {
-    type: "bar",
-    data: { labels: Object.keys(s), datasets: [{ data: Object.values(s), backgroundColor: "#ff0000" }] },
-    options: { plugins: { legend: { display: false } } },
-  });
-};
-
-// Upload Video
+// Upload
 document.getElementById("uploadForm").onsubmit = async (e) => {
   e.preventDefault();
   if (!ytAccessToken) return alert("Login first.");
   const file = document.getElementById("videoFile").files[0];
-  if (!file) return alert("Select a video.");
-
   const formData = new FormData();
   formData.append("video", file);
   formData.append("title", document.getElementById("title").value);
   formData.append("description", document.getElementById("description").value);
   formData.append("privacyStatus", document.getElementById("privacy").value);
 
-  document.getElementById("ytUploadResult").textContent = "⏳ Uploading...";
-
-  const res = await fetch("http://localhost:5000/upload-video", {
+  const res = await fetch(`${BACKEND_URL}/upload-video`, {
     method: "POST",
     headers: { Authorization: `Bearer ${ytAccessToken}` },
     body: formData,
@@ -471,6 +432,37 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
 
   const data = await res.json();
   document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
+};
+
+// Fetch Metrics
+document.getElementById("btnFetchMetrics").onclick = async () => {
+  const res = await fetch(`${BACKEND_URL}/googleads-metrics`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      developerToken: "YOUR_GOOGLE_ADS_DEVELOPER_TOKEN",
+      customerId: "YOUR_AD_ACCOUNT_ID",
+      accessToken: ytAccessToken
+    })
+  });
+
+  const data = await res.json();
+  document.getElementById("metricsResult").textContent = JSON.stringify(data, null, 2);
+
+  const labels = data[0]?.results?.map(r => r.campaign.name) || [];
+  const impressions = data[0]?.results?.map(r => r.metrics.impressions) || [];
+  const clicks = data[0]?.results?.map(r => r.metrics.clicks) || [];
+
+  new Chart(document.getElementById("ytChart"), {
+    type: "bar",
+    data: {
+      labels,
+      datasets: [
+        { label: "Impressions", data: impressions },
+        { label: "Clicks", data: clicks }
+      ]
+    },
+  });
 };
 
 (function setDefaults(){
