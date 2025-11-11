@@ -206,62 +206,27 @@ window.selectAdAccount = (i) => {
 };
 
 // ad insights
-// ad insights (ALL TIME)
 document.getElementById('btnGetAdInsights').onclick = () => {
-  if (!selectedAdAccount) return alert('Select an ad account first');
-
-  const fields = 'spend,impressions,clicks,reach,ctr,cpc,cpm';
-  const datePreset = 'lifetime'; // ✅ all-time data
-
-  FB.api(
-    `/${selectedAdAccount.id}/insights`,
-    'GET',
-    { fields, date_preset: datePreset, access_token: userAccessToken },
-    res => {
-      if (!res || res.error) {
-        document.getElementById('adInsightsResult').textContent = 'Failed to load ad insights.';
-        console.error('AdInsights error', res);
-        return;
-      }
-
-      if (res.data && res.data.length) {
-        const d = res.data[0];
-        document.getElementById('adInsightsResult').textContent = JSON.stringify(d, null, 2);
-
-        const metrics = {
-          Spend: d.spend || 0,
-          Impressions: d.impressions || 0,
-          Clicks: d.clicks || 0,
-          Reach: d.reach || 0,
-          CTR: d.ctr || 0,
-          CPC: d.cpc || 0,
-          CPM: d.cpm || 0
-        };
-
-        if (adChart) adChart.destroy();
-        adChart = new Chart(document.getElementById('adChart'), {
-          type: 'bar',
-          data: {
-            labels: Object.keys(metrics),
-            datasets: [{ data: Object.values(metrics), backgroundColor: '#f57c00' }]
-          },
-          options: {
-            plugins: {
-              title: {
-                display: true,
-                text: 'Facebook Ad Insights (Lifetime)'
-              }
-            },
-            scales: { y: { beginAtZero: true } }
-          }
-        });
-      } else {
-        document.getElementById('adInsightsResult').textContent = 'No lifetime insights found.';
-      }
+  if(!selectedAdAccount) return alert('Select an ad account first');
+  const datePreset='last_7d';
+  const fields='spend,impressions,clicks';
+  FB.api(`/${selectedAdAccount.id}/insights`,'GET',{fields,date_preset:datePreset,access_token:userAccessToken}, res => {
+    if(!res || res.error) {
+      document.getElementById('adInsightsResult').textContent = 'Failed to load ad insights.';
+      console.error('AdInsights error', res);
+      return;
     }
-  );
+    if(res.data && res.data.length) {
+      const d = res.data[0];
+      document.getElementById('adInsightsResult').textContent = JSON.stringify(d, null, 2);
+      const metrics = { Spend: d.spend || 0, Impressions: d.impressions || 0, Clicks: d.clicks || 0 };
+      if(adChart) adChart.destroy();
+      adChart = new Chart(document.getElementById('adChart'), { type:'bar', data:{ labels:Object.keys(metrics), datasets:[{ data:Object.values(metrics), backgroundColor:'#f57c00' }]}});
+    } else {
+      document.getElementById('adInsightsResult').textContent = 'No insights returned.';
+    }
+  });
 };
-
 
 // fetch pages
 function fetchPages(){
@@ -301,55 +266,20 @@ document.getElementById('btnPost').onclick = () => {
 };
 
 // page insights
-// page insights (ALL TIME)
 document.getElementById('btnGetPageInsights').onclick = () => {
-  if (!selectedPage) return alert('Select page first');
+  if(!selectedPage) return alert('Select page first');
   const metric = document.getElementById('insightsMetric').value;
-
-  // no date_preset, full available history
-  FB.api(
-    `/${selectedPage.id}/insights?metric=${metric}&period=day`,
-    'GET',
-    { access_token: selectedPage.access_token },
-    r => {
-      if (!r || r.error) {
-        document.getElementById('postResult').textContent = 'Failed to fetch all-time insights';
-        console.error(r);
-        return;
-      }
-
-      if (r.data && r.data[0]) {
-        const labels = r.data[0].values.map(v => v.end_time.split('T')[0]);
-        const values = r.data[0].values.map(v => v.value);
-        document.getElementById('postResult').textContent = JSON.stringify(r.data, null, 2);
-
-        if (pageChart) pageChart.destroy();
-        pageChart = new Chart(document.getElementById('pageChart'), {
-          type: 'line',
-          data: {
-            labels,
-            datasets: [
-              {
-                label: `${metric} (All Time)`,
-                data: values,
-                borderColor: '#4267B2',
-                fill: true,
-                backgroundColor: 'rgba(66,103,178,0.18)'
-              }
-            ]
-          },
-          options: {
-            plugins: {
-              title: { display: true, text: 'Facebook Page Insights (All Time)' }
-            },
-            scales: { y: { beginAtZero: true } }
-          }
-        });
-      } else {
-        document.getElementById('postResult').textContent = 'No all-time insights returned.';
-      }
+  FB.api(`/${selectedPage.id}/insights`, { metric, period:'days_7', access_token: selectedPage.access_token }, r => {
+    if(!r || r.error) { document.getElementById('postResult').textContent='Failed to fetch insights'; console.error(r); return; }
+    if(r.data && r.data[0]) {
+      const labels = r.data[0].values.map(v=>v.end_time.split('T')[0]);
+      const values = r.data[0].values.map(v=>v.value);
+      if(pageChart) pageChart.destroy();
+      pageChart = new Chart(document.getElementById('pageChart'), { type:'line', data:{ labels, datasets:[{ label: metric, data: values, borderColor:'#4267B2', fill:true, backgroundColor:'rgba(66,103,178,0.18)'}] }});
+    } else {
+      document.getElementById('postResult').textContent = 'No insights returned.';
     }
-  );
+  });
 };
 
 /* ---------------------------
