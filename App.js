@@ -11,10 +11,24 @@ let pageChart=null, instaChart=null, twitterChart=null, ytChart=null, adChart=nu
 /* ---------------------------
    FACEBOOK: init + helpers
    --------------------------- */
-window.fbAsyncInit = function() {
-  FB.init({ appId: FB_APP_ID, cookie: true, xfbml: false, version: 'v19.0' });
-  FB.getLoginStatus(checkLoginState);
-};
+  window.fbAsyncInit = function() {
+    FB.init({
+      appId: '2766175383577129',
+      cookie: true,
+      xfbml: true,
+      version: 'v19.0'
+    });
+
+    FB.AppEvents.logPageView(); 
+  };
+
+  (function(d, s, id){
+     var js, fjs = d.getElementsByTagName(s)[0];
+     if (d.getElementById(id)) return;
+     js = d.createElement(s); js.id = id;
+     js.src = "https://connect.facebook.net/en_US/sdk.js";
+     fjs.parentNode.insertBefore(js, fjs);
+   }(document, 'script', 'facebook-jssdk'));
 
 function checkLoginState(response) {
   if (response && response.status === 'connected') {
