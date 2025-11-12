@@ -1,4 +1,4 @@
-<script src="https://connect.facebook.net/en_US/sdk.js"></script>
+
 
 const FB_APP_ID = '2766175383577129'; // <-- replace with your FB App ID
 const GOOGLE_CLIENT_ID = '909323253369-817lthmrt17refrp225q39h4nkqsp2tj.apps.googleusercontent.com'; // <-- replace with your Google Web client ID
