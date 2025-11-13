@@ -18,5 +18,3 @@ pre {background:#f0f0f0; padding:12px; border-radius:8px; overflow-x:auto; max-h
 .note {font-size:0.9em;color:#666;margin-top:6px;}
 .error {color:#b00020;font-weight:600;}
 @media(max-width:600px){header{font-size:1.3em;padding:18px}.card{padding:12px}}
-
-
