@@ -1,14 +1,14 @@
 body {
   margin: 0;
   font-family: 'Roboto', sans-serif;
-  background: #353638;
-  color: #eff2f3;
+  background: #0f1724;
+  color: #fff;
 }
 
 /* HEADER */
 .top-header {
   height: 60px;
-  background: #4881ea;
+  background: #111a2b;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -21,7 +21,7 @@ body {
 .logout-btn {
   color: #fff;
   text-decoration: none;
-  background: #04293f;
+  background: #ff4343;
   padding: 8px 15px;
   border-radius: 6px;
 }
@@ -35,7 +35,7 @@ body {
 /* SIDEBAR */
 .sidebar {
   width: 240px;
-  background: #090909;
+  background: #152039;
   padding: 20px 0;
 }
 
@@ -48,7 +48,7 @@ body {
 .menu-item {
   padding: 12px 20px;
   cursor: pointer;
-  color: #78a4ea;
+  color: #bfc6d1;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -56,16 +56,16 @@ body {
 
 .menu-item.active,
 .menu-item:hover {
-  background: rgba(196, 5, 5, 0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-left: 4px solid var(--color);
   color: #fff;
 }
 
 /* ICONS */
-/* .icon {
+.icon {
   width: 20px;
   height: 20px;
-} */
+}
 
 /* CONTENT AREA */
 .content-area {
@@ -75,7 +75,7 @@ body {
 }
 
 .panel-box {
-  background: #0b5e79;
+  background: #1b2646;
   padding: 20px;
   border-radius: 10px;
   margin-bottom: 20px;
@@ -87,8 +87,8 @@ select {
   width: 100%;
   padding: 10px;
   margin-top: 10px;
-  background: #eaeffd;
-  border: 1px solid #1340a9;
+  background: #0d1324;
+  border: 1px solid #3a4a6e;
   border-radius: 6px;
   color: #fff;
 }
@@ -108,7 +108,7 @@ button:hover {
 }
 
 pre {
-  background: #cad6de;
+  background: #0d1324;
   padding: 15px;
   border-radius: 6px;
   max-height: 200px;
