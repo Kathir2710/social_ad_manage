@@ -79,15 +79,62 @@ document.getElementById('btnPost').onclick=()=>{
 };
 
 // --- page insights ---
-document.getElementById('btnGetPageInsights').onclick=()=>{
-  if(!selectedPage)return alert('Select page first');
-  const metric=document.getElementById('insightsMetric').value;
-  FB.api(`/${selectedPage.id}/insights`,{metric,period:'days_7',access_token:selectedPage.access_token},r=>{
-    if(!r||r.error)return console.error(r);
-    const data=r.data[0];
-    const labels=data.values.map(v=>v.end_time.split('T')[0]);
-    const values=data.values.map(v=>v.value);
-    if(pageChart)pageChart.destroy();
-    pageChart=new Chart(document.getElementById('pageChart'),{type:'line',data:{labels,datasets:[{label:metric,data:values,borderColor:'#4267B2',fill:true,backgroundColor:'rgba(66,103,178,0.18)'}]}});
-  });
+// --- PAGE INSIGHTS (Fans, Impressions, Engagement) ---
+document.getElementById("btnGetPageInsights").onclick = () => {
+  if (!selectedPage) {
+    alert("Select page first");
+    return;
+  }
+
+  const metrics = "page_fans,page_impressions,page_engaged_users";
+
+  FB.api(
+    `/${selectedPage.id}/insights?metric=${metrics}&period=days_7`,
+    { access_token: selectedPage.access_token },
+    (res) => {
+      if (!res || res.error) {
+        console.error("Page Insights Error:", res);
+        document.getElementById("postResult").innerText = "Failed to fetch insights.";
+        return;
+      }
+
+      console.log("Page Insights:", res);
+
+      // Extract data
+      const fans = res.data.find(m => m.name === "page_fans");
+      const impressions = res.data.find(m => m.name === "page_impressions");
+      const engaged = res.data.find(m => m.name === "page_engaged_users");
+
+      // Values
+      const fansValue = fans?.values[0]?.value || 0;
+      const impressionsValue = impressions?.values[0]?.value || 0;
+      const engagedValue = engaged?.values[0]?.value || 0;
+
+      // Display the metrics in UI
+      document.getElementById("postResult").innerHTML = `
+        <b>📊 Page Insights (Last 7 Days)</b><br><br>
+        ⭐ <b>Fans:</b> ${fansValue}<br>
+        👀 <b>Impressions:</b> ${impressionsValue}<br>
+        🔥 <b>Engaged Users:</b> ${engagedValue}<br><br>
+      `;
+
+      // Create Chart
+      const labels = ["Fans", "Impressions", "Engaged Users"];
+      const values = [fansValue, impressionsValue, engagedValue];
+
+      if (pageChart) pageChart.destroy();
+
+      pageChart = new Chart(document.getElementById("pageChart"), {
+        type: "bar",
+        data: {
+          labels,
+          datasets: [{
+            label: "Page Metrics (7 Days)",
+            data: values,
+            backgroundColor: ["#4267B2", "#f57c00", "#00796b"]
+          }]
+        }
+      });
+    }
+  );
 };
