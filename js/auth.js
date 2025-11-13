@@ -1,29 +1,39 @@
-// --- LOGIN FUNCTION ---
 document.addEventListener("DOMContentLoaded", () => {
+
+    const emailEl = document.getElementById("email");
+    const passEl = document.getElementById("password");
     const btn = document.getElementById("btnLogin");
-    if (btn) {
-        btn.onclick = () => {
-            const email = document.getElementById("email").value.trim();
-            const pass = document.getElementById("password").value.trim();
+    const errorEl = document.getElementById("error");
 
-            if (email === "" || pass === "") {
-                document.getElementById("error").innerText = "Enter email & password.";
-                return;
-            }
-
-            // Dummy login logic
-            localStorage.setItem("logged_in", "yes");
-
-            window.location.href = "dashboard.html";
-        };
+    // If login elements don't exist → this is NOT login page → skip
+    if (!emailEl || !passEl || !btn) {
+        console.log("auth.js: Not on login page.");
+        return;
     }
-});
 
-console.log("Dashboard loaded");
+    btn.onclick = () => {
+        const email = emailEl.value.trim();
+        const pass = passEl.value.trim();
 
-// Load GAPI client
-window.addEventListener("load", () => {
-  if (typeof gapiInit === "function") gapiInit();
+        // Default credentials
+        const defaultEmail = "akhorrnet@gmail.com";
+        const defaultPass = "1234";
+
+        if (!email || !pass) {
+            if (errorEl) errorEl.innerText = "Enter email & password.";
+            return;
+        }
+
+        if (email !== defaultEmail || pass !== defaultPass) {
+            if (errorEl) errorEl.innerText = "Invalid login. Try again.";
+            return;
+        }
+
+        // Login success → store session
+        localStorage.setItem("logged_in", "yes");
+
+        window.location.href = "dashboard.html";
+    };
 });
 
 
