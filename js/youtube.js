@@ -1,5 +1,13 @@
 
 const BACKEND_URL = "https://social-ads-backend.onrender.com";
+// Detect login redirect
+window.addEventListener("DOMContentLoaded", () => {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("loggedIn") === "true") {
+    document.getElementById("ytStatus").textContent = "✅ Logged in";
+    document.getElementById("btnGoogleLogin").style.display = "none";
+  }
+});
 
 // LOGIN BUTTON
 document.getElementById("btnGoogleLogin").onclick = () => {
@@ -24,6 +32,8 @@ document.getElementById("uploadForm").onsubmit = async (e) => {
   const data = await res.json();
   document.getElementById("ytUploadResult").textContent = JSON.stringify(data, null, 2);
 };
+
+
 
 // Fetch Google Ads metrics
 document.getElementById("btnFetchMetrics").onclick = async () => {
