@@ -117,41 +117,38 @@
 
 
       <!-- YOUTUBE SECTION -->
-      <section id="youtubeSection" class="panel-section">
+      <section id="youtubeSection">
 
-        <div class="panel-box">
-          <h2>📊 YouTube Login</h2>
-          <button id="btnGoogleLogin">Login with Google</button>
-          <button id="btnGoogleLogout" style="display:none;">Logout</button>
-          <span id="ytStatus">Not logged in</span>
-        </div>
+  <div class="panel-box">
+    <h2>YouTube & Ads Login</h2>
+    <button id="btnGoogleLogin">Login with Google</button>
+  </div>
 
-        <div class="panel-box">
-          <h3>Upload Ad</h3>
+  <div class="panel-box">
+    <h3>Upload Ad</h3>
+    <form id="uploadForm">
+      <input type="text" id="title" placeholder="Video Title" required>
+      <textarea id="description" placeholder="Description"></textarea>
+      <select id="privacy">
+        <option>public</option>
+        <option>unlisted</option>
+        <option selected>private</option>
+      </select>
+      <input type="file" id="videoFile" accept="video/*" required>
+      <button type="submit">Upload Video</button>
+    </form>
+    <pre id="ytUploadResult"></pre>
+  </div>
 
-          <form id="uploadForm">
-            <input type="text" id="title" placeholder="Video Title" required>
-            <textarea id="description"></textarea>
-            <select id="privacy">
-              <option>public</option>
-              <option>unlisted</option>
-              <option selected>private</option>
-            </select>
-            <input type="file" id="videoFile" accept="video/*" required>
-            <button type="submit">Upload Video</button>
-          </form>
+  <div class="panel-box">
+    <h3>Google Ads Metrics</h3>
+    <button id="btnFetchMetrics">Fetch Metrics</button>
+    <pre id="metricsResult"></pre>
+    <canvas id="ytChart"></canvas>
+  </div>
 
-          <pre id="ytUploadResult"></pre>
-        </div>
+</section>
 
-        <div class="panel-box">
-          <h3>YouTube Ad Metrics</h3>
-          <button id="btnFetchMetrics">Fetch Metrics</button>
-          <pre id="metricsResult"></pre>
-          <canvas id="ytChart"></canvas>
-        </div>
-
-      </section>
 
     </main>
   </div>
